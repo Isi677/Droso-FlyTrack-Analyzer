@@ -1,17 +1,17 @@
 from extractor_locomotor_funciones_analisis import calcular_distancia, ordenar_datos_para_exc
 #FUNCIONES RELACIONADAS CON DISTANCIA RESPECTO A ROI
-def preference(total_filas, coord_circulo, n_moscas, formato): 
+def preference(total_filas, coord_circulo, n_moscas, formato, tiempo): 
     if formato == 1:
-        titulos, resultado, listado_final = preference_left_right(total_filas, coord_circulo)
+        titulos, resultado, listado_final = preference_left_right(total_filas, coord_circulo, tiempo)
     elif formato == 2:
-        titulos, resultado, listado_final = preference_up_down(total_filas, coord_circulo)
+        titulos, resultado, listado_final = preference_up_down(total_filas, coord_circulo, tiempo)
 
     resultado = ordenar_datos_para_exc(resultado, titulos, n_moscas, listado_final)
 
     print("Terminado!")
     return resultado, listado_final    
 
-def preference_left_right(total_filas, coord_circulo, n_moscas):
+def preference_left_right(total_filas, coord_circulo, n_moscas, tiempo_x_fr):
     import numpy as np
     import math
     titulos = ["Frame", "Tiempo (seg)", "Distancia Pared", "Preference"]
@@ -60,7 +60,7 @@ def preference_left_right(total_filas, coord_circulo, n_moscas):
             y = float(data_actual[2])
 
             frame = int(data_actual[0])
-            tiempo = frame * 0.2857
+            tiempo = frame * tiempo_x_fr
 
             node = (x, y)
 
@@ -83,14 +83,14 @@ def preference_left_right(total_filas, coord_circulo, n_moscas):
         #Se añade lista (representa una mosca) a lista final (todas las moscas)
         listado_final.append(listado_inicial)
 
-def preference_up_down(total_filas, coord_circulo, n_moscas):
+def preference_up_down(total_filas, coord_circulo, n_moscas, tiempo_x_fr):
     return None
 
 def closest_node(node, nodes):
     from scipy.spatial import distance
     return nodes[distance.cdist([node], nodes).argmin()]
  
-def distancia_pared (total_filas, coord_circulo, n_moscas, mm_px, mm_py, n_anillos):
+def distancia_pared (total_filas, coord_circulo, n_moscas, mm_px, mm_py, n_anillos, tiempo_x_fr):
     import numpy as np
     titulos = ["Frame", "Tiempo (seg)", "Distancia Pared", "Anillo"]
     resultado = [[]]
@@ -133,7 +133,7 @@ def distancia_pared (total_filas, coord_circulo, n_moscas, mm_px, mm_py, n_anill
             y = float(data_actual[2])
 
             frame = int(data_actual[0])
-            tiempo = frame * 0.2857
+            tiempo = frame * tiempo_x_fr
 
             anillo = classify_point_in_ring(x, y, ring_coords, centro_arena)
 

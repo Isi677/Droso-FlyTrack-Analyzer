@@ -1,5 +1,157 @@
-
 from statistics import mean
+
+#Se genera la clase DROSOPHILA (o mosca), la cual almacena:
+#Datos de filtros, velocidades, aceleraciones, numero de detenciones,
+#  numero de pausas, numero de inicio de movimiento, 
+class Drosophila:
+    def __init__(self):
+        self.speed_with_0 = 0
+        self.aceleration_with_0 = 0
+        self.speed_without_0 = 0
+        self.aceleration_without_0 = 0
+        self.speed_with_filter = 0
+        self.aceleration_with_filter = 0
+
+        self.number_data_with_0 = 0
+        self.number_data_without_0 = 0
+        self.number_data_with_filter = 0
+
+        self.moving = False
+        self.paused = False
+        self.stopped = False
+
+        self.number_moving = 0
+        self.number_paused = 0
+        self.number_stop = 0
+
+        self.continued_moving = 0
+        self.continued_pause = 0
+        self.continued_stop = 0
+
+        self.time_moving = 0
+        self.time_paused = 0
+        self.time_stopped = 0
+
+        self.avg_moving = []
+        self.avg_paused = []
+        self.avg_stopped = []
+
+        self.avg_speed_with_0 = None
+        self.avg_speed_without_0 = None
+        self.avg_speed_with_filter = None
+
+        self.avg_acceleration_with_0 = None
+        self.avg_acceleration_without_0 = None
+        self.avg_acceleration_with_filter = None
+
+    def __str__(self) -> str:
+        return f"Drosophila Object"
+
+    def average_data(self):
+        if self.number_data_with_0 == 0:
+            self.avg_speed_with_0 = 0
+            self.avg_acceleration_with_0 = 0
+        else: 
+            self.avg_speed_with_0 = self.speed_with_0/self.number_data_with_0   
+            self.avg_acceleration_with_0 = self.aceleration_with_0/self.number_data_with_0 
+        
+        if self.number_data_without_0 == 0:
+            self.avg_speed_without_0 = 0
+            self.avg_acceleration_without_0 = 0
+        else: 
+            self.avg_speed_without_0 = self.speed_without_0/self.number_data_without_0
+            self.avg_acceleration_without_0 = self.aceleration_without_0/self.number_data_without_0
+        
+        if self.number_data_with_filter == 0:
+            self.avg_speed_with_filter = 0
+            self.avg_acceleration_with_filter = 0
+        else: 
+           self.avg_speed_with_filter = self.speed_with_filter/self.number_data_with_filter
+           self.avg_acceleration_with_filter = self.aceleration_with_filter/self.number_data_with_filter
+        
+        self.avg_moving = self.mean_time(self.avg_moving)
+        self.avg_paused = self.mean_time(self.avg_paused)
+        self.avg_stopped = self.mean_time(self.avg_stopped)
+
+        self.activity = (self.number_data_with_filter / self.number_data_with_0) * 100
+
+        return None
+    
+    def add_data(self, filter, speed, acel, timexfr):
+        self.number_data_with_0 += 1
+        self.speed_with_0 += speed
+        self.aceleration_with_0 += acel
+        #-------------------------------------------------
+        #Si la velocidad es mayor a 0, es incluye el dato a las velocidades y aceleraciones que no incluyen 0
+        if speed > 0:
+           self.speed_without_0 += speed
+           self.aceleration_without_0 += acel
+           self.number_data_without_0 += 1
+        
+        #-------------------------------------------------
+        #Se determina si la mosca esta detenida ("Detencion" es distinta de "Pausa")        
+        if speed == 0:
+            #Si la velocidad es 0, se considera Detenida
+            self.number_stop += 1
+            self.continued_stop += 1
+
+            if self.continued_stop >= 2:
+                self.time_stopped += timexfr
+            self.stopped = True
+    
+        elif speed != 0 and self.stopped:
+            #Si la velocidad es distinta de 0 y la mosca estaba detenida:
+            self.continued_stop = 0
+            self.stopped = False
+
+            self.avg_stopped.append(self.time_stopped)
+            self.time_stopped = 0   
+
+        #----------------------------------------------------------------------
+        #Se determina si la mosca esta pausada ("Pausa" es distinta de "Detencion")
+
+        #Si la mosca está bajo del filtro, se considera en "Pausa"
+        if speed < filter:
+            self.number_paused += 1
+            self.continued_pause += 1
+            self.paused = True
+            self.time_paused += timexfr
+
+            if self.moving:
+                #Si la mosca se estaba moviendo pero ahora esta pausada:
+                self.continued_moving = 0
+                self.continued_moving = False
+                self.avg_moving.append (self.time_moving)
+                self.time_moving = 0
+    
+        #Si la mosca está sobre el filtro, se considera en "Movimiento"
+        elif speed >= filter:
+            self.number_data_with_filter += 1
+
+            self.speed_with_filter += speed
+            self.aceleration_with_filter += acel
+            
+            self.number_moving += 1
+            self.continued_moving += 1
+            self.moving = True
+            self.time_moving += timexfr
+    
+            if self.paused:
+                #Si la mosca estaba pausada pero ahora se mueve:
+                self.continued_pause = 0
+                self.paused = False
+                self.avg_paused.append(self.time_paused)
+                self.time_paused = 0
+
+    def mean_time (self, lista):
+        if lista == []:
+            tiempo_promedio = 0
+        else:
+            tiempo_promedio = mean(lista)
+        
+        return tiempo_promedio
+
+#--------------------------------------------------------------------------    
 # OTRAS FUNCIONES 
 def ordenar_datos_para_exc(resultado, titulos, n_moscas, listado_final):
     for i in range(0, n_moscas):
@@ -23,7 +175,7 @@ def calcular_distancia (posX1, posY1, posX2, posY2, mm_px, mm_py):
     return dist
 
 #FUNCIONES RELACIONADAS CON CÁLCULO DE DISTANCIAS
-def distancia_promediada(total_filas, n_moscas, mm_px, mm_py, filtro):
+def distancia_promediada(total_filas, n_moscas, mm_px, mm_py, filtro, tiempo_x_fr):
     titulos = [
         "Frame", "Tiempo (seg)", "PosX", "PosY", 
         "Distancia (mm)", "Distancia Acumulada (mm)", 
@@ -55,7 +207,7 @@ def distancia_promediada(total_filas, n_moscas, mm_px, mm_py, filtro):
         for j in range (0, final): 
             data_actual = filas[j]
             frame1 = int(data_actual[0])
-            tiempo = frame1 * 0.2857
+            tiempo = frame1 * tiempo_x_fr
             posX1= float (data_actual[1])
             posY1 = float (data_actual[2])
 
@@ -79,7 +231,7 @@ def distancia_promediada(total_filas, n_moscas, mm_px, mm_py, filtro):
                                                 mm_px,mm_py)
                 
                 division_distancia = dist_final/(len(data_filas_vacias))
-                dist, vel, acel = aplicar_filtro_distancia(division_distancia, filtro)
+                dist, vel, acel = aplicar_filtro_distancia(division_distancia, filtro, tiempo_x_fr)
                 for k in range(0, len(data_filas_vacias)):
                     dist_acumulada += dist
                     data_filas_vacias[k].extend([dist, dist_acumulada, vel, acel])
@@ -100,7 +252,7 @@ def distancia_promediada(total_filas, n_moscas, mm_px, mm_py, filtro):
             #Si frame TIENE DATOS y el dato siguiente ESTA LLENO
             elif posX1 != 0 and posY1 != 0 and posX2 != 0 and posY2 != 0:  
                 dist = calcular_distancia(posX1, posY1, posX2, posY2, mm_px, mm_py)
-                dist, vel, acel = aplicar_filtro_distancia(dist, filtro)
+                dist, vel, acel = aplicar_filtro_distancia(dist, filtro, tiempo_x_fr)
                 dist_acumulada += dist
                 fila_nueva = [frame1, tiempo, posX1, posY1, dist, dist_acumulada, vel, acel]
                 listado.append(fila_nueva)
@@ -115,8 +267,7 @@ def distancia_promediada(total_filas, n_moscas, mm_px, mm_py, filtro):
     print("Terminado!")
     return resultado, listado_final
 
-def distancia(total_filas, n_moscas, mm_px, mm_py, filtro):
-
+def distancia(total_filas, n_moscas, mm_px, mm_py, filtro, tiempo_x_fr):
     titulos = [
         "Frame", "Tiempo (seg)", "PosX", "PosY", 
         "Distancia (mm)", "Distancia Acumulada (mm)", 
@@ -147,7 +298,7 @@ def distancia(total_filas, n_moscas, mm_px, mm_py, filtro):
             posicion_x1= float (data_actual[1])
             posicion_y1 = float (data_actual[2])
             
-            tiempo = frame1 * 0.2857
+            tiempo = frame1 * tiempo_x_fr
 
             data_siguiente = filas[j+1]
             posicion_x2 = float (data_siguiente[1])
@@ -155,7 +306,7 @@ def distancia(total_filas, n_moscas, mm_px, mm_py, filtro):
 
             dist = calcular_distancia(posicion_x1, posicion_y1, posicion_x2, posicion_y2, mm_px, mm_py)
 
-            dist, vel, acel = aplicar_filtro_distancia(dist, filtro)
+            dist, vel, acel = aplicar_filtro_distancia(dist, filtro, tiempo_x_fr)
 
             #Se suma distancia a distancias acumuladas
             dist_acumulada += dist
@@ -170,10 +321,10 @@ def distancia(total_filas, n_moscas, mm_px, mm_py, filtro):
 
     resultado = ordenar_datos_para_exc(resultado, titulos, n_moscas, listado_final)
 
-    print("Terminado!")
+    #print("Terminado!")
     return resultado, listado_final
 
-def aplicar_filtro_distancia (dist, filtro):
+def aplicar_filtro_distancia (dist, filtro, tiempo_x_fr):
     #Se calula distancias con filtro si es necesario
     if filtro[0]:
         if dist < filtro[1]:
@@ -181,12 +332,12 @@ def aplicar_filtro_distancia (dist, filtro):
             vel = 0
             acel = 0
         else:
-            vel = dist/0.2857
-            acel = dist/((0.2857)**2)
+            vel = dist/tiempo_x_fr
+            acel = dist/((tiempo_x_fr)**2)
     #Si no hay filtro, se calcula velocidad y aceleracion sin restricciones
     else:
-        vel = dist/0.2857
-        acel = dist/((0.2857)**2)
+        vel = dist/tiempo_x_fr
+        acel = dist/((tiempo_x_fr)**2)
     return dist, vel, acel
 
 #FUNCIONES RELACIONADAS CON LA GENERACIÓN DE UN ARCHIVO RESUMEN
@@ -273,7 +424,7 @@ def aplicar_filtro_velocidad (filtro, aceleracion, velocidad, tiempo,
 def summary(datos_videos, n_moscas, filtro, 
             datos_dist_pared, coord_ROI,
             analizar_preferencia, datos_preferencia,
-            n_ring, datos_social):
+            n_ring, datos_social, tiempo_x_fr):
     data_final = [["# Fly", "Travelled Distance (mm)", 
                     "Mean velocity (mm/s)", "Mean velocity, not considering zeros", 
                     f"Mean velocity, considering values higher than {filtro} mm/s", 
@@ -297,49 +448,19 @@ def summary(datos_videos, n_moscas, filtro,
         data_final[0] += ["Tiempo interaccion"]
     else:
         analizar_sociabilidad = False
-
-    print(len(datos_videos), len(datos_social))
-
+    
+    #Se recorre cada video
     for j in range (len(datos_videos)):
         mosca_video = 0
         video = datos_videos[j]
-        print(len(datos_videos[j]), len(datos_social[j]))
-
 
         #Se recorre cada mosca del video
         for k in range (len(video)):
             mosca_video += 1
             data_mosca = video[k]
 
-            avg_vel_0 = 0
-            avg_vel = 0
-            avg_vel_filtro = 0
-            avg_acel_0 = 0
-            avg_acel = 0
-            avg_acel_filtro = 0
-            
-            mosca_detenida = False
-            n_detentions = 0
-            n_detentions_seguido = 0
-            tiempos_detencion = []
-            tiempo_detencion = 0
-
-            mosca_pausada = False
-            n_pause = 0
-            n_pause_seguido = 0
-            tiempos_pause = []
-            tiempo_pause = 0
-
-            mosca_moving= False
-            n_moving= 0
-            n_moving_seguido = 0
-            tiempos_moving = []
-            tiempo_moving = 0
-
-            fr_actividad = 0
-
-            length_no0 = 0
-            length_filt = 0
+            #Se genera objeto Drosophila
+            fly = Drosophila()
 
             #Parametros centrofobismo
             cf_periphery = 0
@@ -361,8 +482,6 @@ def summary(datos_videos, n_moscas, filtro,
                 data_actual = data_mosca[i]
                 velocidad = float(data_actual[6])
                 aceleracion = float(data_actual[7])
-                tiempo = 0.2857
-
 
                 #Se evalua tiempo de interaccion
                 #Si la distancia entre la mosca y otra es menor a 3 mm, se suma tiempo de interaccion
@@ -371,8 +490,7 @@ def summary(datos_videos, n_moscas, filtro,
                    print(social_mosca_coordenada)
                    dist_social = social_mosca_coordenada[2]
                    if dist_social < 3:
-                       time_interaction += tiempo
-
+                       time_interaction += tiempo_x_fr
                 
                 #Se evalua centrobismo
                 score_cf = int(datos_dist_pared[j][k][i][3])
@@ -403,81 +521,25 @@ def summary(datos_videos, n_moscas, filtro,
                             cf_periphery_pause += ring_scores[score_cf]
                         elif velocidad >= filtro:
                             cf_periphery_moving += ring_scores[score_cf]
-                
-                
+                            
                 #Se evalua preferencia
                 if analizar_preferencia:
                     if datos_preferencia[j][k][i][2] == "Left":
-                        pf_left += tiempo
+                        pf_left += tiempo_x_fr
                     elif datos_preferencia[j][k][i][2] == "Right":
-                        pf_right += tiempo
+                        pf_right += tiempo_x_fr
 
-                avg_acel_0 += aceleracion
-                avg_vel_0 += velocidad
+                fly.add_data(filter=filtro, speed=velocidad, acel=aceleracion, timexfr=tiempo_x_fr)
 
-                resultado = aplicar_filtro_velocidad (
-                    filtro, aceleracion, velocidad, tiempo,
-                    avg_acel, avg_acel_filtro,
-                    avg_vel, avg_vel_filtro,
-                    length_no0, length_filt, fr_actividad,
-                    mosca_detenida, tiempo_detencion, tiempos_detencion, n_detentions, n_detentions_seguido,
-                    mosca_pausada, tiempo_pause, tiempos_pause, n_pause, n_pause_seguido,
-                    mosca_moving, tiempo_moving, tiempos_moving, n_moving, n_moving_seguido
-                    )
-                
-                avg_acel = resultado[0]
-                avg_acel_filtro = resultado[1]
-                avg_vel = resultado[2]
-                avg_vel_filtro = resultado[3]
-                length_no0 = resultado[4]
-                length_filt = resultado[5]
-                fr_actividad = resultado[6]
-                mosca_detenida = resultado[7]
-                tiempo_detencion = resultado[8]
-                tiempos_detencion = resultado[9]
-                n_detentions = resultado[10]
-                n_detentions_seguido = resultado[11]
-                mosca_pausada = resultado[12]
-                tiempo_pause = resultado[13]
-                tiempos_pause = resultado[14]
-                n_pause = resultado[15]
-                n_pause_seguido = resultado[16]
-                mosca_moving = resultado[17]
-                tiempo_moving = resultado[18]
-                tiempos_moving = resultado[19]
-                n_moving = resultado[20]
-                n_moving_seguido = resultado[21]
-
-            avg_acel_0 /= (len(data_mosca))
-            avg_vel_0 /= (len(data_mosca))
-
-            if length_no0 == 0:
-                avg_acel = 0
-                avg_vel = 0
-            else:
-                avg_acel /= length_no0
-                avg_vel /= length_no0
-
-            if length_filt == 0:
-                avg_acel_filtro = 0
-                avg_vel_filtro = 0
-            else:
-                avg_acel_filtro /= length_filt
-                avg_vel_filtro /= length_filt
-
-            actividad = (fr_actividad/(len(data_mosca)))*100
-
-            detencion_promedio = mean_time(tiempos_detencion) 
-            pausa_promedio = mean_time(tiempos_pause)
-            moving_promedio = mean_time(tiempos_moving)
+            fly.average_data()
             dist_final = data_mosca[-1][5]
 
             data_agregar = [mosca_video, dist_final,
-                              avg_vel_0, avg_vel, avg_acel_filtro,
-                              avg_acel_0, avg_acel, avg_acel_filtro,
-                              actividad, 
-                              n_pause, pausa_promedio, n_moving, moving_promedio,
-                              n_detentions, detencion_promedio]
+                            fly.avg_speed_with_0, fly.avg_speed_without_0, fly.avg_speed_with_filter, 
+                            fly.avg_acceleration_with_0, fly.avg_acceleration_without_0, fly.avg_acceleration_with_filter, 
+                            fly.activity, fly.number_paused, fly.avg_paused, 
+                            fly.number_moving, fly.avg_moving,
+                            fly.number_stop, fly.avg_stopped]
         
             #Se evalua centrofobismo
             cf_index = (cf_periphery-cf_center)/ (cf_center+cf_periphery)
@@ -500,15 +562,6 @@ def summary(datos_videos, n_moscas, filtro,
     return data_final
 
 
-
-
-def mean_time (lista):
-    if lista == []:
-        tiempo_promedio = 0
-    else:
-        tiempo_promedio = mean(lista)
-    
-    return tiempo_promedio
 
 def calculate_scores (n_rings):
     score_list = []
