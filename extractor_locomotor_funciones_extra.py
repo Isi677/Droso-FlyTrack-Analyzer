@@ -1,17 +1,18 @@
 from extractor_locomotor_funciones_analisis import calcular_distancia, ordenar_datos_para_exc
+from scipy.spatial import distance
 #FUNCIONES RELACIONADAS CON DISTANCIA RESPECTO A ROI
-def preference(total_filas, coord_circulo, n_moscas, formato): 
+def preference(total_filas, coord_circulo, n_moscas, formato, tiempo): 
     if formato == 1:
-        titulos, resultado, listado_final = preference_left_right(total_filas, coord_circulo)
+        titulos, resultado, listado_final = preference_left_right(total_filas, coord_circulo, tiempo)
     elif formato == 2:
-        titulos, resultado, listado_final = preference_up_down(total_filas, coord_circulo)
+        titulos, resultado, listado_final = preference_up_down(total_filas, coord_circulo, tiempo)
 
     resultado = ordenar_datos_para_exc(resultado, titulos, n_moscas, listado_final)
 
     print("Terminado!")
     return resultado, listado_final    
 
-def preference_left_right(total_filas, coord_circulo, n_moscas):
+def preference_left_right(total_filas, coord_circulo, n_moscas, tiempo_x_fr):
     import numpy as np
     import math
     titulos = ["Frame", "Tiempo (seg)", "Distancia Pared", "Preference"]
@@ -60,7 +61,7 @@ def preference_left_right(total_filas, coord_circulo, n_moscas):
             y = float(data_actual[2])
 
             frame = int(data_actual[0])
-            tiempo = frame * 0.2857
+            tiempo = frame * tiempo_x_fr
 
             node = (x, y)
 
@@ -83,14 +84,14 @@ def preference_left_right(total_filas, coord_circulo, n_moscas):
         #Se añade lista (representa una mosca) a lista final (todas las moscas)
         listado_final.append(listado_inicial)
 
-def preference_up_down(total_filas, coord_circulo, n_moscas):
+def preference_up_down(total_filas, coord_circulo, n_moscas, tiempo_x_fr):
     return None
 
 def closest_node(node, nodes):
     from scipy.spatial import distance
     return nodes[distance.cdist([node], nodes).argmin()]
  
-def distancia_pared (total_filas, coord_circulo, n_moscas, mm_px, mm_py, n_anillos):
+def distancia_pared (total_filas, coord_circulo, n_moscas, mm_px, mm_py, n_anillos, tiempo_x_fr):
     import numpy as np
     titulos = ["Frame", "Tiempo (seg)", "Distancia Pared", "Anillo"]
     resultado = [[]]
@@ -133,7 +134,7 @@ def distancia_pared (total_filas, coord_circulo, n_moscas, mm_px, mm_py, n_anill
             y = float(data_actual[2])
 
             frame = int(data_actual[0])
-            tiempo = frame * 0.2857
+            tiempo = frame * tiempo_x_fr
 
             anillo = classify_point_in_ring(x, y, ring_coords, centro_arena)
 
@@ -243,36 +244,39 @@ def plot_rings(ring_coordinates, arena_radius):
     plt.show()
 
 #FUNCIONES DE SOCIABILIDAD
-def interaccion(total_filas, mm_px, mm_py, n_flies):
-    tiempos_interaccion = []
+def calculate_distances(points, mm_px, mm_py):
+    #Se obtiene el número de puntos/moscas
+    num_points = len(points)
+    #Creacion de lista con listas de de 5 elementos, siendo estos elementos valores = 0
+    distances = [[0] * num_points for _ in range(num_points)]
+    #Por cada punto
+    for i in range(num_points):
+        for j in range(i + 1, num_points):
+            dist = calcular_distancia(points[i][0], points[i][1], points[j][0], points[j][1], mm_px, mm_py)
+            distances[i][j] = distances[j][i] = dist
+    return distances
+
+
+def interaccion(total_filas, mm_px, mm_py):
+    n_flies = len(total_filas)    
+    d = {}
+    d1 = {}
+
+    #Transformar lista de listas en dict, donde la llave corresponde al frame y contenido es una lista de listas con coordenadas de cada mosca en dicho frame
+    for i in range(len(total_filas[0])):
+        d[total_filas[0][i][0]] = []
 
     for i in range(n_flies):
-        tiempos_interaccion.append([])
-        for j in range(len(total_filas[0])):
-            tiempos_interaccion[i].append([j])
+        for frame in d:
+            d[frame].append(total_filas[i][frame-1][1:])
 
-   #Se recorre frame por frame
-    for i in range(len(total_filas[0])):
-        #En el frame "i", se evalúan las coordenadas de la mosca "j" 
+    #Construir un segundo dict, en donde cada frame es una llave 
+    #Y el contenido es una lista de listas con las distancias entre cada mosca
+    for frame in d:
+        distancias_entre_moscas = calculate_distances(d[frame], mm_px, mm_py)
+        d1[frame] = distancias_entre_moscas
 
-        for j in range(0, n_flies):
-            point1 = (total_filas[j][i][1], total_filas[j][i][2])
-            #print(point1)
-
-            #Se evalua la distancia de la mosca "j" con mosca "k"
-            for k in range(0, n_flies):
-                if k != j:
-                    point2 = (total_filas[k][i][1], total_filas[k][i][2])
-                    dist_between_flies = calcular_distancia(point1[0], point1[1], point2[0], point2[1], mm_px, mm_py)
-                    
-                    print(tiempos_interaccion[j][i])
-                    tiempos_interaccion[j][i].append([j, k, dist_between_flies])
-
-
-    for element in tiempos_interaccion:
-        del element[0]
-
-    return tiempos_interaccion
+    return d1
 
             
 

@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from extractor_parametros import excels_coordenadas, filtro_distancia, filtro_actividad_pausas, analizar_preferencia, n_rings
+from extractor_parametros import excels_coordenadas, filtro_distancia, filtro_actividad_pausas, analizar_preferencia, n_rings, tiempo
 import extractor_locomotor_funciones_extraccion as f
 import extractor_locomotor_funciones_analisis as fa
 import extractor_locomotor_funciones_extra as fe
@@ -73,11 +73,11 @@ for grupo in datos_grupos:
         #Se obtienen datos crudos por frame con la funcion distancia
         #Funcion distancia: entrega una lista para pasarla a excel y una lista con sub-listas que reflejan cada mosca
 
-        distancia_R, listado_R = fa.distancia(filas_vacios_rellenados, n_moscas_video, mm_px, mm_py, filtro_distancia)
+        distancia_R, listado_R = fa.distancia(filas_vacios_rellenados, n_moscas_video, mm_px, mm_py, filtro_distancia, tiempo)
         df_rellenado = pd.DataFrame(distancia_R)
-        distancia_E, listado_E = fa.distancia(filas_sin_vacios, n_moscas_video, mm_px, mm_py, filtro_distancia)
+        distancia_E, listado_E = fa.distancia(filas_sin_vacios, n_moscas_video, mm_px, mm_py, filtro_distancia, tiempo)
         df_eliminado = pd.DataFrame(distancia_E)
-        distancia_C, listado_C = fa.distancia_promediada(filas_con_vacios, n_moscas_video, mm_px, mm_py, filtro_distancia)
+        distancia_C, listado_C = fa.distancia_promediada(filas_con_vacios, n_moscas_video, mm_px, mm_py, filtro_distancia, tiempo)
         df_convacios = pd.DataFrame(distancia_C)
         
         if not os.path.exists(f"./Analisis Datos Crudos/{grupo}"):
@@ -100,9 +100,9 @@ for grupo in datos_grupos:
         #Código para analizar centrofobismo
         print("Iniciando análisis centrofobismo...")
         
-        dist_pared_C, listado_pared_C = fe.distancia_pared(filas_con_vacios, coord_ROI, n_moscas_video, mm_px, mm_py, n_rings)
-        dist_pared_R, listado_pared_R = fe.distancia_pared(filas_vacios_rellenados, coord_ROI, n_moscas_video, mm_px, mm_py, n_rings)
-        dist_pared_E, listado_pared_E = fe.distancia_pared(filas_sin_vacios, coord_ROI, n_moscas_video, mm_px, mm_py, n_rings)
+        dist_pared_C, listado_pared_C = fe.distancia_pared(filas_con_vacios, coord_ROI, n_moscas_video, mm_px, mm_py, n_rings, tiempo)
+        dist_pared_R, listado_pared_R = fe.distancia_pared(filas_vacios_rellenados, coord_ROI, n_moscas_video, mm_px, mm_py, n_rings, tiempo)
+        dist_pared_E, listado_pared_E = fe.distancia_pared(filas_sin_vacios, coord_ROI, n_moscas_video, mm_px, mm_py, n_rings, tiempo)
         
         df_rellenado_pared = pd.DataFrame(dist_pared_R)
         df_convacios_pared = pd.DataFrame(dist_pared_C)
@@ -122,21 +122,20 @@ for grupo in datos_grupos:
         if n_moscas_video > 1:
             #Código para analizar sociabilidad
             print("Iniciando análisis de sociabilidad...")
-            listado_social_C = fe.interaccion(filas_con_vacios, mm_px, mm_py, n_moscas_video)
-            listado_social_R = fe.interaccion(filas_vacios_rellenados,  mm_px, mm_py, n_moscas_video)
-            
-            print(len(listado_social_C[0]))
-            print(listado_social_C[0])
-            listados_social_R.append(listado_social_R)
+            listado_social_C = fe.interaccion(filas_con_vacios, mm_px, mm_py)
+            listado_social_R = fe.interaccion(filas_vacios_rellenados,  mm_px, mm_py)
             listados_social_C.append(listado_social_C)
+            listados_social_R.append(listado_social_R)
+            
+
         #-----------------------------------------------------------------------
         #Código para analizar preferencia de la arena
         if analizar_preferencia[0]:
             print("Iniciando análisis de preferencia...")
             
-            pref_C, listado_pref_C = fa.preference(filas_con_vacios, coord_ROI, n_moscas_video)
-            pref_R, listado_pref_R = fa.preference(filas_vacios_rellenados, coord_ROI, n_moscas_video)
-            pref_E, listado_pref_E = fa.preference(filas_sin_vacios, coord_ROI, n_moscas_video)
+            pref_C, listado_pref_C = fa.preference(filas_con_vacios, coord_ROI, n_moscas_video, tiempo)
+            pref_R, listado_pref_R = fa.preference(filas_vacios_rellenados, coord_ROI, n_moscas_video, tiempo)
+            pref_E, listado_pref_E = fa.preference(filas_sin_vacios, coord_ROI, n_moscas_video, tiempo)
             
             df_rellenado_pref = pd.DataFrame(pref_R)
             df_convacios_pref = pd.DataFrame(pref_C)
@@ -162,19 +161,19 @@ for grupo in datos_grupos:
                           filtro_actividad_pausas, 
                           listados_pared_C, ROI_coords,
                           analizar_preferencia[0], listados_pref_C, n_rings, 
-                          listados_social_C)
+                          listados_social_C, tiempo)
     print("Parámetros de data con vacios rellenados")
     summary_R = fa.summary(listados_R, n_moscas_video, 
                           filtro_actividad_pausas, 
                           listados_pared_R, ROI_coords,
                           analizar_preferencia[0], listados_pref_R, n_rings, 
-                          listados_social_R)
+                          listados_social_R, tiempo)
     print("Parámetros de data con vacios eliminados")
     summary_E = fa.summary(listados_E, n_moscas_video, 
                           filtro_actividad_pausas, 
                           listados_pared_E, ROI_coords,
                           analizar_preferencia[0], listados_pref_C, n_rings, 
-                          listados_social_E)
+                          listados_social_E, tiempo)
     
     summary_E = pd.DataFrame(summary_E)
     summary_R = pd.DataFrame(summary_R)
