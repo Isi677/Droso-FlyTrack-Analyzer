@@ -325,16 +325,10 @@ def distancia(total_filas, n_moscas, mm_px, mm_py, filtro, tiempo_x_fr):
     return resultado, listado_final
 
 def aplicar_filtro_distancia (dist, filtro, tiempo_x_fr):
-    #Se calula distancias con filtro si es necesario
-    if filtro[0]:
-        if dist < filtro[1]:
-            dist = 0
-            vel = 0
-            acel = 0
-        else:
-            vel = dist/tiempo_x_fr
-            acel = dist/((tiempo_x_fr)**2)
-    #Si no hay filtro, se calcula velocidad y aceleracion sin restricciones
+    if dist < filtro:
+        dist = 0
+        vel = 0
+        acel = 0
     else:
         vel = dist/tiempo_x_fr
         acel = dist/((tiempo_x_fr)**2)
@@ -434,14 +428,15 @@ def summary(datos_videos, n_moscas, filtro,
                     "Walking bouts frequency (s)", "Average walking time (s)", 
                     "Detention frequency", "Average Detention time (s)"]]
     
-    data_final[0] += ["Center Score", "Periphery Score", "Centrophobism index"]
+    data_final[0] += ["Centrophobism index"]
     data_final[0] += ["Centrophobism index moving", "Centrophobism index paused"]
+    data_final[0] += ["% Time in Center", "% Time in Periphery"]
 
     ring_scores = calculate_scores(n_ring)
     #print(ring_scores)
 
-    if analizar_preferencia: 
-        data_final[0] += ["Time in left zone", "Time in right zone", "Left preference index", "Right preferencia index"]
+    if analizar_preferencia == None: 
+        data_final[0] += ["Time in left zone", "Time in right zone", "Left preference index", "Right preference index"]
 
     if n_moscas > 1 and datos_social != []:
         analizar_sociabilidad = True
@@ -465,6 +460,8 @@ def summary(datos_videos, n_moscas, filtro,
             #Parametros centrofobismo
             cf_periphery = 0
             cf_center = 0
+            fr_periphery = 0
+            fr_center = 0
             cf_periphery_moving = 0
             cf_center_moving = 0
             cf_center_pause = 0
@@ -505,12 +502,14 @@ def summary(datos_videos, n_moscas, filtro,
                 score_cf = int(datos_dist_pared[j][k][i][3])
                 if (n_ring%2) == 0:
                     if score_cf < (n_ring/2):
+                        fr_center += 1
                         cf_center += ring_scores[score_cf]
                         if velocidad < filtro:
                             cf_center_pause += ring_scores[score_cf]
                         elif velocidad >= filtro:
                             cf_center_moving += ring_scores[score_cf]
                     elif score_cf >= (n_ring/2):
+                        fr_periphery += 1
                         cf_periphery += ring_scores[score_cf]
                         if velocidad < filtro:
                             cf_periphery_pause += ring_scores[score_cf]
@@ -519,12 +518,14 @@ def summary(datos_videos, n_moscas, filtro,
 
                 elif (n_ring%2) != 0:
                     if score_cf <= ((n_ring//2)+1):
+                        fr_center += 1
                         cf_center += ring_scores[score_cf]
                         if velocidad < filtro:
                             cf_center_pause += ring_scores[score_cf]
                         elif velocidad >= filtro:
                             cf_center_moving += ring_scores[score_cf]
                     elif score_cf > (n_ring//2+1):
+                        fr_periphery += 1
                         cf_periphery += ring_scores[score_cf]
                         if velocidad < filtro:
                             cf_periphery_pause += ring_scores[score_cf]
@@ -532,7 +533,7 @@ def summary(datos_videos, n_moscas, filtro,
                             cf_periphery_moving += ring_scores[score_cf]
                             
                 #Se evalua preferencia
-                if analizar_preferencia:
+                if analizar_preferencia == None:
                     if datos_preferencia[j][k][i][2] == "Left":
                         pf_left += tiempo_x_fr
                     elif datos_preferencia[j][k][i][2] == "Right":
@@ -552,9 +553,14 @@ def summary(datos_videos, n_moscas, filtro,
         
             #Se evalua centrofobismo
             cf_index = (cf_periphery-cf_center)/ (cf_center+cf_periphery)
-            cf_index_moving = (cf_periphery_moving-cf_center_moving)/ (cf_center_moving+cf_periphery_moving)
+            if cf_center_moving+cf_periphery_moving != 0:
+                cf_index_moving = (cf_periphery_moving-cf_center_moving)/ (cf_center_moving+cf_periphery_moving)
+            else:
+                cf_index_moving = "Can't be calculated"
             cf_index_pause = (cf_periphery_pause-cf_center_pause)/ (cf_center_pause+cf_periphery_pause)
-            data_agregar += [cf_center, cf_periphery, cf_index, cf_index_moving, cf_index_pause]
+            fr_center_fraction = fr_center/(fr_center+fr_periphery)*100
+            fr_periphery_fraction = fr_periphery/(fr_center+fr_periphery)*100
+            data_agregar += [cf_index, cf_index_moving, cf_index_pause, fr_center_fraction, fr_periphery_fraction]
 
             #Se evalua sociabilidad
             if analizar_sociabilidad:
@@ -563,7 +569,7 @@ def summary(datos_videos, n_moscas, filtro,
                 data_agregar += [time_interaction, mean_dist_closest_neighbour, mean_dist_all_neighbour]
             
             #Se evalua preferencia
-            if analizar_preferencia:
+            if analizar_preferencia == None:
                 pf_left_index = pf_left/(pf_left+pf_right)
                 pf_right_index = pf_right/(pf_left+pf_right)
                 data_agregar += [pf_left, pf_right, pf_left_index, pf_right_index]
