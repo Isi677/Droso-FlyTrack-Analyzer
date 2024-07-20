@@ -1,5 +1,27 @@
 from statistics import mean
 
+def calculate_distance (posX1, posY1, posX2, posY2, mm_px, mm_py):
+    #Se calculan las diferencias cuadradas de posiciones
+    diferencia_x = ((posX1-posX2)*mm_px)**2
+    diferencia_y = ((posY1-posY2)*mm_py)**2
+    #Se calcula la distancia
+    dist = (diferencia_x + diferencia_y)**0.5
+    return dist
+
+def ordenar_datos_para_exc(resultado, titulos, n_moscas, listado_final, frames):
+    for i in range(0, n_moscas):
+        resultado[-1] += titulos
+    for i in range (0, frames):
+        resultado.append([])
+
+    for j in range (0, n_moscas):
+        largo = len(listado_final[j])
+        for i in range (0, largo):
+            resultado[i+1] += listado_final[j][i]
+    
+    return resultado
+
+#---------------------------------------------------------------------------------
 #Se genera la clase DROSOPHILA (o mosca), la cual almacena:
 #Datos de filtros, velocidades, aceleraciones, numero de detenciones,
 #  numero de pausas, numero de inicio de movimiento, 
@@ -151,189 +173,7 @@ class Drosophila:
         
         return tiempo_promedio
 
-#--------------------------------------------------------------------------    
-# OTRAS FUNCIONES 
-def ordenar_datos_para_exc(resultado, titulos, n_moscas, listado_final):
-    for i in range(0, n_moscas):
-        resultado[-1] += titulos
-    for i in range (0, 1200):
-        resultado.append([])
-
-    for j in range (0, n_moscas):
-        largo = len(listado_final[j])
-        for i in range (0, largo):
-            resultado[i+1] += listado_final[j][i]
-    
-    return resultado
-
-def calcular_distancia (posX1, posY1, posX2, posY2, mm_px, mm_py):
-    #Se calculan las diferencias cuadradas de posiciones
-    diferencia_x = ((posX1-posX2)*mm_px)**2
-    diferencia_y = ((posY1-posY2)*mm_py)**2
-    #Se calcula la distancia
-    dist = (diferencia_x + diferencia_y)**0.5
-    return dist
-
-#FUNCIONES RELACIONADAS CON CÁLCULO DE DISTANCIAS
-def distancia_promediada(total_filas, n_moscas, mm_px, mm_py, filtro, tiempo_x_fr):
-    titulos = [
-        "Frame", "Tiempo (seg)", "PosX", "PosY", 
-        "Distancia (mm)", "Distancia Acumulada (mm)", 
-        "Velocidad (mm/s)", "Aceleracion (mm/s2)"
-    ]
-    resultado = [[]]
-
-    posicion_mosca = -1
-    listado_final = []
-    
-    #Se recorre la lista mosca por mosca
-    for i in range (1, n_moscas+1):
-        #print(f"Obteniendo data de mosca {i}")
-        #Se obtienen coordenadas de una mosca
-        filas = total_filas[i-1]
-        #Se obtiene el numero de frames de la mosca - 1
-        final = len(filas)-1
-        posicion_mosca += 2
-        #Se inicia la distancia acumulada
-        dist_acumulada = 0
-        #Se inicia lista inicial
-        listado = []
-
-        #Parametros para contar frames vacios
-        data_filas_vacias = []
-        coord_inicio = []
-        
-        #Se recorren las coordenadas desde el inicio hasta el total - 1
-        for j in range (0, final): 
-            data_actual = filas[j]
-            frame1 = int(data_actual[0])
-            tiempo = frame1 * tiempo_x_fr
-            posX1= float (data_actual[1])
-            posY1 = float (data_actual[2])
-
-            data_siguiente = filas[j+1]
-            posX2 = float (data_siguiente[1])
-            posY2 = float (data_siguiente[2])
-
-            #------------------------------------------------------------------
-            #Si el frame NO TIENE DATOS y dato siguiente ESTA VACIO
-            if posX1 == 0 and posY1 == 0 and posX2 == 0 and posY2 == 0:
-                #Se agregan los datos de frame, tiempo, y coordenadas a una lista
-                data_filas_vacias.append([frame1, tiempo, 0, 0])
-
-            #------------------------------------------------------------------
-            #Si el frame NO TIENE DATOS y dato siguiente ESTA LLENO
-            elif posX1 == 0 and posY1 == 0 and posX2 != 0 and posY2 != 0:
-                data_filas_vacias.append([frame1, tiempo, 0, 0])
-                coord_final = [posX2, posY2]
-                dist_final = calcular_distancia(coord_inicio[0],coord_inicio[1],
-                                                coord_final[0], coord_final[1],
-                                                mm_px,mm_py)
-                
-                division_distancia = dist_final/(len(data_filas_vacias))
-                dist, vel, acel = aplicar_filtro_distancia(division_distancia, filtro, tiempo_x_fr)
-                for k in range(0, len(data_filas_vacias)):
-                    dist_acumulada += dist
-                    data_filas_vacias[k].extend([dist, dist_acumulada, vel, acel])
-                    listado.append(data_filas_vacias[k])
-
-                data_filas_vacias = []
-                coord_inicio = []
-
-            #------------------------------------------------------------------
-            #Si frame TIENE DATOS y el dato siguiente ESTA VACIO
-            elif posX1 != 0 and posY1 != 0 and posX2 == 0 and posY2 == 0:
-                #Se reinician valores para evaluar filas vacias
-                coord_inicio = [posX1, posY1]
-                #Se agregan los datos de frame, tiempo, y coordenadas a una lista
-                data_filas_vacias.append([frame1, tiempo, posX1, posY1])
-
-            #------------------------------------------------------------------
-            #Si frame TIENE DATOS y el dato siguiente ESTA LLENO
-            elif posX1 != 0 and posY1 != 0 and posX2 != 0 and posY2 != 0:  
-                dist = calcular_distancia(posX1, posY1, posX2, posY2, mm_px, mm_py)
-                dist, vel, acel = aplicar_filtro_distancia(dist, filtro, tiempo_x_fr)
-                dist_acumulada += dist
-                fila_nueva = [frame1, tiempo, posX1, posY1, dist, dist_acumulada, vel, acel]
-                listado.append(fila_nueva)
-            #------------------------------------------------------------------
-
-        #Se añade lista (representa una mosca) a lista final (todas las moscas)
-        listado_final.append(listado)
-    
-    
-    resultado = ordenar_datos_para_exc(resultado, titulos, n_moscas, listado_final) 
-
-    print("Terminado!")
-    return resultado, listado_final
-
-def distancia(total_filas, n_moscas, mm_px, mm_py, filtro, tiempo_x_fr):
-    titulos = [
-        "Frame", "Tiempo (seg)", "PosX", "PosY", 
-        "Distancia (mm)", "Distancia Acumulada (mm)", 
-        "Velocidad (mm/s)", "Aceleracion (mm/s2)"
-    ]
-    resultado = [[]]
-
-    posicion_mosca = -1
-    listado_final = []
-    
-    #Se recorre la lista mosca por mosca
-    for i in range (1, n_moscas+1):
-        #print(f"Obteniendo data de mosca {i}")
-        #Se obtienen coordenadas de una mosca
-        filas = total_filas[i-1]
-        #Se obtiene el numero de frames de la mosca - 1
-        final = len(filas)-1
-        posicion_mosca += 2
-        #Se inicia la distancia acumulada
-        dist_acumulada = 0
-        #Se inicia lista inicial
-        listado_inicial = []
-        
-        #Se recorren las coordenadas desde el inicio hasta el total - 1
-        for j in range (final): 
-            data_actual = filas[j]
-            frame1 = int(data_actual[0])
-            posicion_x1= float (data_actual[1])
-            posicion_y1 = float (data_actual[2])
-            
-            tiempo = frame1 * tiempo_x_fr
-
-            data_siguiente = filas[j+1]
-            posicion_x2 = float (data_siguiente[1])
-            posicion_y2 = float (data_siguiente[2])
-
-            dist = calcular_distancia(posicion_x1, posicion_y1, posicion_x2, posicion_y2, mm_px, mm_py)
-
-            dist, vel, acel = aplicar_filtro_distancia(dist, filtro, tiempo_x_fr)
-
-            #Se suma distancia a distancias acumuladas
-            dist_acumulada += dist
-            
-            #Se guardan parametros en una lista para agregarlos a la lista inicial
-            fila_nueva = [frame1, tiempo, posicion_x1, posicion_y1, 
-                          dist, dist_acumulada, vel, acel]
-            listado_inicial.append(fila_nueva)
-
-        #Se añade lista (representa una mosca) a lista final (todas las moscas)
-        listado_final.append(listado_inicial)
-
-    resultado = ordenar_datos_para_exc(resultado, titulos, n_moscas, listado_final)
-
-    #print("Terminado!")
-    return resultado, listado_final
-
-def aplicar_filtro_distancia (dist, filtro, tiempo_x_fr):
-    if dist < filtro:
-        dist = 0
-        vel = 0
-        acel = 0
-    else:
-        vel = dist/tiempo_x_fr
-        acel = dist/((tiempo_x_fr)**2)
-    return dist, vel, acel
-
+#---------------------------------------------------------------------------------
 #FUNCIONES RELACIONADAS CON LA GENERACIÓN DE UN ARCHIVO RESUMEN
 def aplicar_filtro_velocidad (filtro, aceleracion, velocidad, tiempo,
                               avg_acel, avg_acel_filtro,
@@ -415,8 +255,23 @@ def aplicar_filtro_velocidad (filtro, aceleracion, velocidad, tiempo,
 
     return res 
 
+def calculate_scores (n_rings):
+    score_list = []
+    if (n_rings%2) == 0:
+        if n_rings == 2:
+            score_list = [1, 1]
+        else:
+           half_length = n_rings // 2
+           score_list = [half_length] + list(range(half_length - 1, 0, -1)) + list(range(1, half_length + 1))
+    elif (n_rings%2) != 0:
+        half_length = (n_rings + 1) // 2
+        score_list = [abs(half_length - i) for i in range(1, half_length + 1)]
+        score_list.extend(score_list[:n_rings // 2][::-1])
+        score_list = [x+1 for x in score_list]
+    return score_list
+
 def summary(datos_videos, n_moscas, filtro, 
-            datos_dist_pared, coord_ROI,
+            analizar_centrofobismo, datos_dist_pared,
             analizar_preferencia, datos_preferencia,
             n_ring, datos_social, tiempo_x_fr):
     data_final = [["# Fly", "Travelled Distance (mm)", 
@@ -428,16 +283,21 @@ def summary(datos_videos, n_moscas, filtro,
                     "Walking bouts frequency (s)", "Average walking time (s)", 
                     "Detention frequency", "Average Detention time (s)"]]
     
-    data_final[0] += ["Centrophobism index"]
-    data_final[0] += ["Centrophobism index moving", "Centrophobism index paused"]
-    data_final[0] += ["% Time in Center", "% Time in Periphery"]
-
-    ring_scores = calculate_scores(n_ring)
-    #print(ring_scores)
-
-    if analizar_preferencia == None: 
+    #Se agregan títulos de centrofobismo
+    if analizar_centrofobismo:    
+        data_final[0] += ["Centrophobism index"]
+        data_final[0] += ["Centrophobism index moving", "Centrophobism index paused"]
+        data_final[0] += ["% Time in Center", "% Time in Periphery"]
+        ring_scores = calculate_scores(n_ring)
+        #print(ring_scores)
+    
+    #Se agregan títulos de preferencia
+    if analizar_preferencia == "Left/Right": 
         data_final[0] += ["Time in left zone", "Time in right zone", "Left preference index", "Right preference index"]
-
+    elif analizar_preferencia == "Top/Bottom":
+        data_final[0] += ["Time in top zone", "Time in bottom zone", "Top preference index", "Bottom preference index"]
+    
+    #Se agregan títulos de sociabilidad
     if n_moscas > 1 and datos_social != []:
         analizar_sociabilidad = True
         data_final[0] += ["Interaction Time (seg)", "Mean Distance to Closest Neighbour", "Mean Distance to all Neighbours"]
@@ -470,6 +330,8 @@ def summary(datos_videos, n_moscas, filtro,
             #Parametros preferencia
             pf_left = 0
             pf_right = 0
+            pf_top = 0
+            pf_bottom = 0
 
             #Parametros social
             time_interaction = 0
@@ -499,45 +361,51 @@ def summary(datos_videos, n_moscas, filtro,
                        time_interaction += tiempo_x_fr
                 
                 #Se evalua centrobismo
-                score_cf = int(datos_dist_pared[j][k][i][3])
-                if (n_ring%2) == 0:
-                    if score_cf < (n_ring/2):
-                        fr_center += 1
-                        cf_center += ring_scores[score_cf]
-                        if velocidad < filtro:
-                            cf_center_pause += ring_scores[score_cf]
-                        elif velocidad >= filtro:
-                            cf_center_moving += ring_scores[score_cf]
-                    elif score_cf >= (n_ring/2):
-                        fr_periphery += 1
-                        cf_periphery += ring_scores[score_cf]
-                        if velocidad < filtro:
-                            cf_periphery_pause += ring_scores[score_cf]
-                        elif velocidad >= filtro:
-                            cf_periphery_moving += ring_scores[score_cf]
-
-                elif (n_ring%2) != 0:
-                    if score_cf <= ((n_ring//2)+1):
-                        fr_center += 1
-                        cf_center += ring_scores[score_cf]
-                        if velocidad < filtro:
-                            cf_center_pause += ring_scores[score_cf]
-                        elif velocidad >= filtro:
-                            cf_center_moving += ring_scores[score_cf]
-                    elif score_cf > (n_ring//2+1):
-                        fr_periphery += 1
-                        cf_periphery += ring_scores[score_cf]
-                        if velocidad < filtro:
-                            cf_periphery_pause += ring_scores[score_cf]
-                        elif velocidad >= filtro:
-                            cf_periphery_moving += ring_scores[score_cf]
+                if analizar_centrofobismo:
+                    score_cf = int(datos_dist_pared[j][k][i][3])
+                    if (n_ring%2) == 0:
+                        if score_cf < (n_ring/2):
+                            fr_center += 1
+                            cf_center += ring_scores[score_cf]
+                            if velocidad < filtro:
+                                cf_center_pause += ring_scores[score_cf]
+                            elif velocidad >= filtro:
+                                cf_center_moving += ring_scores[score_cf]
+                        elif score_cf >= (n_ring/2):
+                            fr_periphery += 1
+                            cf_periphery += ring_scores[score_cf]
+                            if velocidad < filtro:
+                                cf_periphery_pause += ring_scores[score_cf]
+                            elif velocidad >= filtro:
+                                cf_periphery_moving += ring_scores[score_cf]
+    
+                    elif (n_ring%2) != 0:
+                        if score_cf <= ((n_ring//2)+1):
+                            fr_center += 1
+                            cf_center += ring_scores[score_cf]
+                            if velocidad < filtro:
+                                cf_center_pause += ring_scores[score_cf]
+                            elif velocidad >= filtro:
+                                cf_center_moving += ring_scores[score_cf]
+                        elif score_cf > (n_ring//2+1):
+                            fr_periphery += 1
+                            cf_periphery += ring_scores[score_cf]
+                            if velocidad < filtro:
+                                cf_periphery_pause += ring_scores[score_cf]
+                            elif velocidad >= filtro:
+                                cf_periphery_moving += ring_scores[score_cf]
                             
                 #Se evalua preferencia
-                if analizar_preferencia == None:
+                if analizar_preferencia == "Left/Right":
                     if datos_preferencia[j][k][i][2] == "Left":
                         pf_left += tiempo_x_fr
                     elif datos_preferencia[j][k][i][2] == "Right":
                         pf_right += tiempo_x_fr
+                elif analizar_preferencia == "Top/Bottom":
+                    if datos_preferencia[j][k][i][2] == "Top":
+                        pf_top += tiempo_x_fr
+                    elif datos_preferencia[j][k][i][2] == "Bottom":
+                        pf_bottom += tiempo_x_fr
 
                 fly.add_data(filter=filtro, speed=velocidad, acel=aceleracion, timexfr=tiempo_x_fr)
 
@@ -552,45 +420,33 @@ def summary(datos_videos, n_moscas, filtro,
                             fly.number_stop, fly.avg_stopped]
         
             #Se evalua centrofobismo
-            cf_index = (cf_periphery-cf_center)/ (cf_center+cf_periphery)
-            if cf_center_moving+cf_periphery_moving != 0:
-                cf_index_moving = (cf_periphery_moving-cf_center_moving)/ (cf_center_moving+cf_periphery_moving)
-            else:
-                cf_index_moving = "Can't be calculated"
-            cf_index_pause = (cf_periphery_pause-cf_center_pause)/ (cf_center_pause+cf_periphery_pause)
-            fr_center_fraction = fr_center/(fr_center+fr_periphery)*100
-            fr_periphery_fraction = fr_periphery/(fr_center+fr_periphery)*100
-            data_agregar += [cf_index, cf_index_moving, cf_index_pause, fr_center_fraction, fr_periphery_fraction]
+            if analizar_centrofobismo:
+                cf_index = (cf_periphery-cf_center)/ (cf_center+cf_periphery)
+                if cf_center_moving+cf_periphery_moving != 0:
+                    cf_index_moving = (cf_periphery_moving-cf_center_moving)/ (cf_center_moving+cf_periphery_moving)
+                else:
+                    cf_index_moving = "Can't be calculated"
+                cf_index_pause = (cf_periphery_pause-cf_center_pause)/ (cf_center_pause+cf_periphery_pause)
+                fr_center_fraction = fr_center/(fr_center+fr_periphery)*100
+                fr_periphery_fraction = fr_periphery/(fr_center+fr_periphery)*100
+                data_agregar += [cf_index, cf_index_moving, cf_index_pause, fr_center_fraction, fr_periphery_fraction]
+
+            #Se evalua preferencia
+            if analizar_preferencia == "Left/Right":
+                pf_left_index = pf_left/(pf_left+pf_right)
+                pf_right_index = pf_right/(pf_left+pf_right)
+                data_agregar += [pf_left, pf_right, pf_left_index, pf_right_index]
+            elif analizar_preferencia == "Top/Bottom":
+                pf_top_index = pf_top/(pf_bottom+pf_top)
+                pf_bottom_index = pf_bottom/(pf_bottom+pf_top)
+                data_agregar += [pf_top, pf_bottom, pf_top_index, pf_bottom_index]
 
             #Se evalua sociabilidad
             if analizar_sociabilidad:
                 mean_dist_closest_neighbour = mean(distances_closest_neighbour)
                 mean_dist_all_neighbour = mean(distances_all_neighbours)
                 data_agregar += [time_interaction, mean_dist_closest_neighbour, mean_dist_all_neighbour]
-            
-            #Se evalua preferencia
-            if analizar_preferencia == None:
-                pf_left_index = pf_left/(pf_left+pf_right)
-                pf_right_index = pf_right/(pf_left+pf_right)
-                data_agregar += [pf_left, pf_right, pf_left_index, pf_right_index]
     
             data_final.append(data_agregar)  
 
     return data_final
-
-def calculate_scores (n_rings):
-    score_list = []
-    if (n_rings%2) == 0:
-        if n_rings == 2:
-            score_list = [1, 1]
-        else:
-           half_length = n_rings // 2
-           score_list = [half_length] + list(range(half_length - 1, 0, -1)) + list(range(1, half_length + 1))
-    elif (n_rings%2) != 0:
-        half_length = (n_rings + 1) // 2
-        score_list = [abs(half_length - i) for i in range(1, half_length + 1)]
-        score_list.extend(score_list[:n_rings // 2][::-1])
-        score_list = [x+1 for x in score_list]
-    return score_list
-
-
