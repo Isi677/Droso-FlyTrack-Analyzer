@@ -91,9 +91,15 @@ def main_backend(data_groups, excels_coordinates,
                 #Funcion distancia: entrega una lista para pasarla a excel y una lista con sub-listas que reflejan cada mosca
 
                 print("Generating Raw Data...")        
-                distancia_R, listado_R = f.distancia(filas_vacios_rellenados, n_moscas_video, mm_px, mm_py, filter_distance, tiempo, total_frame_number)
+                distancia_R, listado_R = f.distancia(
+                    total_filas=filas_vacios_rellenados, n_moscas=n_moscas_video, 
+                    mm_px=mm_px, mm_py=mm_py, filtro=filter_distance, tiempo_x_fr=tiempo, 
+                    frames=total_frame_number)
                 df_rellenado = pd.DataFrame(distancia_R)
-                distancia_E, listado_E = f.distancia(filas_sin_vacios, n_moscas_video, mm_px, mm_py, filter_distance, tiempo, total_frame_number)
+                distancia_E, listado_E = f.distancia(
+                    total_filas=filas_sin_vacios, n_moscas=n_moscas_video, 
+                    mm_px=mm_px, mm_py=mm_py, filtro=filter_distance, tiempo_x_fr=tiempo, 
+                    frames=total_frame_number)
                 df_eliminado = pd.DataFrame(distancia_E)
                 distancia_C, listado_C = f.distancia_promediada(filas_con_vacios, n_moscas_video, mm_px, mm_py, filter_distance, tiempo, total_frame_number)
                 df_convacios = pd.DataFrame(distancia_C)

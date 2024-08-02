@@ -265,5 +265,5 @@ def apply_filter_distance (dist, filtro, tiempo_x_fr):
         acel = 0
     else:
         vel = dist/tiempo_x_fr
-        acel = dist/((tiempo_x_fr)**2)
+        acel = vel/tiempo_x_fr
     return dist, vel, acel

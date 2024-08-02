@@ -133,7 +133,7 @@ class Drosophila:
         #Se determina si la mosca esta pausada ("Pausa" es distinta de "Detencion")
 
         #Si la mosca está bajo del filtro, se considera en "Pausa"
-        if speed < filter:
+        if (filter != 0 and speed < filter) or (filter == 0 and speed == 0):
             self.number_paused += 1
             self.continued_pause += 1
             self.paused = True
@@ -147,7 +147,7 @@ class Drosophila:
                 self.time_moving = 0
     
         #Si la mosca está sobre el filtro, se considera en "Movimiento"
-        elif speed >= filter:
+        elif (filter != 0 and speed >= filter) or (filter == 0 and speed != 0):
             self.number_data_with_filter += 1
 
             self.speed_with_filter += speed
@@ -175,86 +175,6 @@ class Drosophila:
 
 #---------------------------------------------------------------------------------
 #FUNCIONES RELACIONADAS CON LA GENERACIÓN DE UN ARCHIVO RESUMEN
-def aplicar_filtro_velocidad (filtro, aceleracion, velocidad, tiempo,
-                              avg_acel, avg_acel_filtro,
-                              avg_vel, avg_vel_filtro,
-                              length_no0, length_filt, fr_actividad,
-                              mosca_detenida, tiempo_detencion, tiempos_detencion, n_detentions, n_detentions_seguido,
-                              mosca_pausada, tiempo_pause, tiempos_pause, n_pause, n_pause_seguido,
-                              mosca_moving, tiempo_moving, tiempos_moving, n_moving, n_moving_seguido):
-
-    if velocidad > 0:
-        avg_acel += aceleracion
-        avg_vel += velocidad
-        length_no0 +=1
-    #-------------------------------------------------
-    #Se determina si la mosca esta detenida ("Detencion" es distinta de "Pausa")
-    if velocidad == 0:
-        #Si la velocidad es 0, se considera Detenida
-        n_detentions += 1
-        n_detentions_seguido += 1
-        if n_detentions_seguido >= 2:
-            tiempo_detencion += tiempo
-        mosca_detenida = True
-
-    elif velocidad != 0 and mosca_detenida:
-        #Si la velocidad es distinta de 0 y la mosca estaba detenida:
-        n_detentions_seguido = 0
-        mosca_detenida = False
-        tiempos_detencion.append(tiempo_detencion)
-        tiempo_detencion = 0
-        
-    #----------------------------------------------------------------------
-    #Se determina si la mosca esta pausada ("Pausa" es distinta de "Detencion")
-    
-    #Si la mosca está bajo del filtro, se considera en "Pausa"
-    if velocidad < filtro:
-        n_pause += 1
-        n_pause_seguido += 1
-        mosca_pausada = True
-        tiempo_pause += tiempo
-
-        if mosca_moving:
-            #Si la mosca se estaba moviendo pero ahora esta pausada:
-            n_moving_seguido = 0
-            mosca_moving = False
-            tiempos_moving.append(tiempo_moving)
-            tiempo_moving = 0
-
-    #Si la mosca está sobre el filtro, se considera en "Movimiento"
-    elif velocidad >= filtro:
-        n_moving += 1
-        n_moving_seguido += 1
-        mosca_moving = True
-        tiempo_moving += 1
-
-        if mosca_pausada:
-            #Si la mosca estaba pausada pero ahora se mueve:
-            n_pause_seguido = 0
-            mosca_pausada = False
-            tiempos_pause.append(tiempo_pause)
-            tiempo_pause = 0
-
-        avg_acel += aceleracion
-        avg_acel_filtro += aceleracion
-        avg_vel += velocidad
-        avg_vel_filtro += velocidad
-        length_filt += 1
-        length_no0 += 1
-        fr_actividad += 1
-
-    #--------------------------------------------------------
-    
-    res= [
-        avg_acel, avg_acel_filtro, avg_vel, avg_vel_filtro,
-        length_no0, length_filt, fr_actividad, 
-        mosca_detenida, tiempo_detencion, tiempos_detencion, n_detentions, n_detentions_seguido,
-        mosca_pausada, tiempo_pause, tiempos_pause, n_pause, n_pause_seguido,
-        mosca_moving, tiempo_moving, tiempos_moving, n_moving, n_moving_seguido
-        ]
-
-    return res 
-
 def calculate_scores (n_rings):
     score_list = []
     if (n_rings%2) == 0:
@@ -367,32 +287,32 @@ def summary(datos_videos, n_moscas, filtro,
                         if score_cf < (n_ring/2):
                             fr_center += 1
                             cf_center += ring_scores[score_cf]
-                            if velocidad < filtro:
+                            if (filtro != 0 and velocidad < filtro) or (filtro == 0 and velocidad == 0):
                                 cf_center_pause += ring_scores[score_cf]
-                            elif velocidad >= filtro:
+                            elif (filtro != 0 and velocidad >= filtro) or (filtro == 0 and velocidad != 0):
                                 cf_center_moving += ring_scores[score_cf]
                         elif score_cf >= (n_ring/2):
                             fr_periphery += 1
                             cf_periphery += ring_scores[score_cf]
-                            if velocidad < filtro:
+                            if (filtro != 0 and velocidad < filtro) or (filtro == 0 and velocidad == 0):
                                 cf_periphery_pause += ring_scores[score_cf]
-                            elif velocidad >= filtro:
+                            elif (filtro != 0 and velocidad >= filtro) or (filtro == 0 and velocidad != 0):
                                 cf_periphery_moving += ring_scores[score_cf]
     
                     elif (n_ring%2) != 0:
                         if score_cf <= ((n_ring//2)+1):
                             fr_center += 1
                             cf_center += ring_scores[score_cf]
-                            if velocidad < filtro:
+                            if (filtro != 0 and velocidad < filtro) or (filtro == 0 and velocidad == 0):
                                 cf_center_pause += ring_scores[score_cf]
-                            elif velocidad >= filtro:
+                            elif (filtro != 0 and velocidad >= filtro) or (filtro == 0 and velocidad != 0):
                                 cf_center_moving += ring_scores[score_cf]
                         elif score_cf > (n_ring//2+1):
                             fr_periphery += 1
                             cf_periphery += ring_scores[score_cf]
-                            if velocidad < filtro:
+                            if (filtro != 0 and velocidad < filtro) or (filtro == 0 and velocidad == 0):
                                 cf_periphery_pause += ring_scores[score_cf]
-                            elif velocidad >= filtro:
+                            elif (filtro != 0 and velocidad >= filtro) or (filtro == 0 and velocidad != 0):
                                 cf_periphery_moving += ring_scores[score_cf]
                             
                 #Se evalua preferencia
