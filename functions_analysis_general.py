@@ -104,7 +104,7 @@ class Drosophila:
         self.speed_with_0 += speed
         self.aceleration_with_0 += acel
         #-------------------------------------------------
-        #Si la velocidad es mayor a 0, es incluye el dato a las velocidades y aceleraciones que no incluyen 0
+        #Si la velocidad es mayor a 0, se incluye el dato a las velocidades y aceleraciones que no incluyen 0
         if speed > 0:
            self.speed_without_0 += speed
            self.aceleration_without_0 += acel
@@ -132,39 +132,55 @@ class Drosophila:
         #----------------------------------------------------------------------
         #Se determina si la mosca esta pausada ("Pausa" es distinta de "Detencion")
 
-        #Si la mosca está bajo del filtro, se considera en "Pausa"
-        if (filter != 0 and speed < filter) or (filter == 0 and speed == 0):
-            self.number_paused += 1
-            self.continued_pause += 1
-            self.paused = True
-            self.time_paused += timexfr
-
-            if self.moving:
-                #Si la mosca se estaba moviendo pero ahora esta pausada:
-                self.continued_moving = 0
-                self.continued_moving = False
-                self.avg_moving.append (self.time_moving)
-                self.time_moving = 0
-    
-        #Si la mosca está sobre el filtro, se considera en "Movimiento"
-        elif (filter != 0 and speed >= filter) or (filter == 0 and speed != 0):
-            self.number_data_with_filter += 1
-
-            self.speed_with_filter += speed
-            self.aceleration_with_filter += acel
+        if filter > 1:
+            #Si la mosca está bajo el umbral inferior, se considera en "Pausa"
+            if speed < 1:
+                self.paused = True
+                self.number_paused += 1
+                self.continued_pause += 1
+                self.time_paused += timexfr
+                if self.moving:
+                    #Si la mosca se estaba moviendo pero ahora esta pausada:
+                    self.moving = False
+                    self.continued_moving = 0
+                    self.avg_moving.append (self.time_moving)
+                    self.time_moving = 0
             
-            self.number_moving += 1
-            self.continued_moving += 1
-            self.moving = True
-            self.time_moving += timexfr
-    
-            if self.paused:
-                #Si la mosca estaba pausada pero ahora se mueve:
-                self.continued_pause = 0
-                self.paused = False
-                self.avg_paused.append(self.time_paused)
-                self.time_paused = 0
+            #Si la mosca está sobre el umbral superior, se considera en "Movimiento"
+            elif speed > filter:
+                self.moving = True
+                self.number_data_with_filter += 1
+                self.speed_with_filter += speed
+                self.aceleration_with_filter += acel
+                
+                self.number_moving += 1
+                self.continued_moving += 1
+                self.time_moving += timexfr
 
+                if self.paused:
+                    #Si la mosca estaba pausada pero ahora se mueve:
+                    self.paused = False
+                    self.continued_pause = 0
+                    self.avg_paused.append(self.time_paused)
+                    self.time_paused = 0
+           
+            # Casos borde donde la mosca esta a una velocidad intermedia entre umbrales
+            elif speed <= filter and speed >= 1 and self.paused:
+                self.paused = True
+                self.number_paused += 1
+                self.continued_pause += 1
+                self.time_paused += timexfr
+
+            elif speed <= filter and speed >= 1 and self.moving:
+                self.moving = True
+                self.number_data_with_filter += 1
+                self.speed_with_filter += speed
+                self.aceleration_with_filter += acel
+                
+                self.number_moving += 1
+                self.continued_moving += 1
+                self.time_moving += timexfr
+            
     def mean_time (self, lista):
         if lista == []:
             tiempo_promedio = 0
@@ -280,7 +296,7 @@ def summary(datos_videos, n_moscas, filtro,
                    if dist_closest_neighbour <= 3:
                        time_interaction += tiempo_x_fr
                 
-                #Se evalua centrobismo
+                #Se evalua centrofobismo
                 if analizar_centrofobismo:
                     score_cf = int(datos_dist_pared[j][k][i][3])
                     if (n_ring%2) == 0:
