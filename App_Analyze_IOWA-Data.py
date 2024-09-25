@@ -1,12 +1,65 @@
+import main_backend_roi as br
+import main_backend as ba
 import tkinter as tk
+import cv2
 from tkinter import filedialog, ttk
 from threading import Thread, Event
-from main_backend import main_backend
+from PIL import Image, ImageTk
 
-class Main_Window_PreAnalysis(ttk.Frame):
-    def __init__ (self, main_window):
-        self.window = main_window
-        super().__init__(self.window)
+#------------------------------------------------------------------------------------------------------
+#Logica Aplicacion
+class App:
+    def __init__(self):
+        self.menu_window = None
+        self.create_menu()
+
+    def create_menu(self):
+        self.menu_window = tk.Tk()
+        self.menu_window.title("Main Menu")
+        
+        title_label = ttk.Label(self.menu_window, text="Droso-FlyTrack-Analyzer", font=("Helvetica", 12))
+        title_label.pack(pady=20)
+
+        button2 = ttk.Button(self.menu_window, text="Excel Coordinates Analysis", command=self.open_window_2)
+        button2.pack(pady=10, padx=20)
+
+        button_ROI = ttk.Button(self.menu_window, text="Selection of Objects (Object Recognition Assay)", command=self.open_window_ROI)
+        button_ROI.pack(pady=10, padx=20)
+        
+        self.menu_window.mainloop()
+
+    def open_window_ROI(self):
+        self.menu_window.destroy()
+        window = Window_ROI_Selection(self)
+        window.show()
+
+    def open_window_2(self):
+        self.menu_window.destroy()
+        window = Analysis_Window(self)
+        window.show()
+
+    def back_to_menu(self, current_window):
+        current_window.destroy()
+        self.create_menu()
+
+class BaseWindow:
+    def __init__(self, app, title):
+        self.app = app
+        self.window = tk.Tk()
+        self.window.title(title)
+        self.window.geometry("1100x600")
+
+    def show(self):
+        self.window.mainloop()
+
+    def back_to_menu(self):
+        self.app.back_to_menu(self.window)
+
+#------------------------------------------------------------------------------------------------------
+#Ventana asociada a Analisis de Coordenadas
+class Analysis_Window(BaseWindow):
+    def __init__ (self, app):
+        super().__init__(app, "Ventana de Análisis de Coordenadas")
         self.window.title("Droso-FlyTrack-Analyzer by Isidora Almonacid Torres")
         self.window.geometry("1000x700")
 
@@ -68,9 +121,11 @@ class Main_Window_PreAnalysis(ttk.Frame):
         
         self.listbox_right = tk.Listbox(self.right_frame, selectmode=tk.MULTIPLE, width=30, height=15)
         self.listbox_right.grid(row=1, column=0, padx=5, pady=5)
-        
+        x_scrollbar = ttk.Scrollbar(self.right_frame, orient="horizontal", command=self.listbox_right.xview)
+        x_scrollbar.grid(row=2, column=0, sticky="ew")
+
         self.delete_right_button = tk.Button(self.right_frame, text="Delete Selected Group", command=self.delete_selected_right, state=tk.DISABLED, bg="tomato")
-        self.delete_right_button.grid(row=2, column=0, padx=5, pady=10)
+        self.delete_right_button.grid(row=3, column=0, padx=5, pady=10)
         
         #Inicialización de sub-región inferior: Donde se seleccionan los parametros de analisis
         self.parameters_frame = tk.Frame(self.window, borderwidth=2, relief=tk.GROOVE, padx=10, pady=10)
@@ -101,21 +156,29 @@ class Main_Window_PreAnalysis(ttk.Frame):
         self.dropdown_preference.set("No")
         self.dropdown_preference.grid(row=1, column=3, padx=5, pady=5, sticky="w")
 
-        tk.Label(self.parameters_frame, text="Number of Rings:").grid(row=3, column=0, padx=5, pady=5, sticky="w")
+        tk.Label(self.parameters_frame, text="Number of Rings:").grid(row=1, column=4, padx=5, pady=5, sticky="w")
         self.rings_entry = tk.Entry(self.parameters_frame, validate="key", validatecommand=(self.window.register(self.validate_rings_number), '%P'))
-        self.rings_entry.grid(row=3, column=1, padx=5, pady=5)
+        self.rings_entry.grid(row=1, column=5, padx=5, pady=5)
         self.rings_entry.bind("<KeyRelease>", self.on_input_change)
 
         self.var_centrophobism = tk.IntVar()
         centrophobism = tk.Checkbutton(self.parameters_frame, text="Centrophobism Analysis", variable=self.var_centrophobism)
-        centrophobism.grid(row=3, column=2, padx=5, pady=5)
-        
-        self.analyze_button = tk.Button(self.window, text="Analyze Selected Files", command=self.analyze_files, state=tk.DISABLED, bg="palegreen")
-        self.analyze_button.grid(row=3, column=0, columnspan=2, pady=10) 
+        centrophobism.grid(row=2, column=0, padx=5, pady=5)
 
         self.var_raw_data = tk.IntVar()
-        raw_data = tk.Checkbutton(self.window, text="Save Raw Data?", variable=self.var_raw_data)
-        raw_data.grid(row=3, column=1, padx=5, pady=5)
+        raw_data = tk.Checkbutton(self.parameters_frame, text="Save Raw Data?", variable=self.var_raw_data)
+        raw_data.grid(row=2, column=1, padx=5, pady=5)
+
+        self.var_object_recognition = tk.IntVar()
+        object_recognition = tk.Checkbutton(self.parameters_frame, text="Object Recognition Analysis", variable=self.var_object_recognition)
+        object_recognition.grid(row=2, column=2, padx=5, pady=5)
+
+        #Botones al final de la ventana
+        self.analyze_button = tk.Button(self.window, text="Analyze Selected Files", command=self.analyze_files, state=tk.DISABLED, bg="palegreen")
+        self.analyze_button.grid(row=3, pady=5, padx=5) 
+
+        back_button = ttk.Button(self.window, text="Back to Menu", command=self.back_to_menu)
+        back_button.grid(row=4, pady=5, padx=5)
 
     # Función para seleccionar archivos excels de coordenadas
     def select_files(self):
@@ -217,7 +280,6 @@ class Main_Window_PreAnalysis(ttk.Frame):
             if name in self.excels_coordinates:
                 del self.excels_coordinates[name]
             self.listbox_right.delete(i)
-        print(self.excels_coordinates)
         self.update_buttons()
 
     def on_input_change(self, event):
@@ -265,6 +327,7 @@ class Main_Window_PreAnalysis(ttk.Frame):
 
         raw_data = bool(self.var_raw_data.get())
         centrophobism_analysis = bool(self.var_centrophobism.get())
+        object_analysis = bool(self.var_object_recognition.get())
 
         analyze_window = tk.Toplevel(self.window)
         analyze_window.title("Analyzing Files...")
@@ -293,7 +356,7 @@ class Main_Window_PreAnalysis(ttk.Frame):
         # Función que corre en un hilo separado
         def run_analysis():
             try:
-                main_backend(
+                ba.main_backend(
                     data_groups=selected_groups, excels_coordinates=self.excels_coordinates, 
                     filter_distance=distance_filter, filter_activity=activity_threshold, 
                     preference_analysis=preference_analysis, 
@@ -327,12 +390,12 @@ class Main_Window_PreAnalysis(ttk.Frame):
         def abort_analysis():
             stop_event.set()
             analyze_window.destroy()
-            main_window.deiconify()
+            self.window.deiconify()
     
         def on_close():
             stop_event.set()
             analyze_window.destroy()
-            main_window.destroy()
+            self.window.destroy()
     
         def check_thread():
             if not analyze_thread.is_alive():
@@ -358,7 +421,7 @@ class Main_Window_PreAnalysis(ttk.Frame):
         analyze_window.grid_columnconfigure(0, weight=1)
 
         # Iniciar el hilo para el análisis
-        analyze_thread = Thread(target=main_backend, args=(selected_files, 
+        analyze_thread = Thread(target=ba.main_backend, args=(selected_files, 
                                                            self.excels_coordinates, 
                                                            filter_distance, 
                                                            filter_activity, 
@@ -368,7 +431,323 @@ class Main_Window_PreAnalysis(ttk.Frame):
         analyze_thread.start()
         check_thread()
 
+#------------------------------------------------------------------------------------------------------
+#Ventana asociada a Seleccion de Objetos
+class Window_ROI_Selection(BaseWindow):
+    def __init__(self, app):
+        super().__init__(app, "Object Selection Window")
+        self.file_paths = []
+        self.csv_paths = []
+        self.current_index = 0
+        self.roi_coordinates = {}
+        self.create_widgets()
+
+    def create_widgets(self):
+        #Widgets de la izquierda
+        left_frame = tk.Frame(self.window)
+        left_frame.grid(row=1, column=0, padx=5, pady=5, sticky="ew")
+
+        select_button = ttk.Button(left_frame, text="Select mp4 files", command=self.select_files)
+        select_button.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        delete_button = ttk.Button(left_frame, text="Delete mp4 selected files", command=self.delete_selected_file)
+        delete_button.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        self.file_listbox = tk.Listbox(left_frame, width=80, height=15)
+        self.file_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        y_scrollbar = ttk.Scrollbar(left_frame, orient="vertical", command=self.file_listbox.yview)
+        y_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        x_scrollbar = ttk.Scrollbar(self.window, orient="horizontal", command=self.file_listbox.xview)
+        x_scrollbar.grid(row=2, column=0, sticky="ew")
+        self.file_listbox.config(yscrollcommand=y_scrollbar.set, xscrollcommand=x_scrollbar.set)
+
+        #Widgets de la derecha
+        right_frame = tk.Frame(self.window)
+        right_frame.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+
+        select_button = ttk.Button(right_frame, text="Select Excel files", command=self.select_files_csv)
+        select_button.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        delete_button = ttk.Button(right_frame, text="Delete selected Excel files", command=self.delete_selected_file_csv)
+        delete_button.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        self.csv_listbox = tk.Listbox(right_frame, width=80, height=15)
+        self.csv_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        y_scrollbar_csv = ttk.Scrollbar(right_frame, orient="vertical", command=self.csv_listbox.yview)
+        y_scrollbar_csv.pack(side=tk.RIGHT, fill=tk.Y)
+        x_scrollbar_csv = ttk.Scrollbar(self.window, orient="horizontal", command=self.csv_listbox.xview)
+        x_scrollbar_csv.grid(row=2, column=1, sticky="ew")
+        self.csv_listbox.config(yscrollcommand=y_scrollbar_csv.set, xscrollcommand=x_scrollbar_csv.set)
+
+        #Widgets inferiores
+        self.start_roi_button = ttk.Button(self.window, text="Select Objects ROI", command=self.open_roi_window, state=tk.DISABLED)
+        self.start_roi_button.grid(row=3, pady=5, padx=5, columnspan=2)
+
+        back_button = ttk.Button(self.window, text="Back to Menu", command=self.back_to_menu)
+        back_button.grid(row=4, pady=5, padx=5, columnspan=2)
+
+    def select_files_csv(self):
+        self.csv_paths = list(filedialog.askopenfilenames(filetypes=[("Excel files", "*.xlsx")]))
+        if self.csv_paths:
+            self.csv_listbox.delete(0, tk.END)
+            for path in self.csv_paths:
+                self.csv_listbox.insert(tk.END, path)
+        self.update_buttons()
+
+    def select_files(self):
+        self.file_paths = list(filedialog.askopenfilenames(filetypes=[("MP4 files", "*.mp4")]))
+        if self.file_paths:
+            self.file_listbox.delete(0, tk.END)
+            for path in self.file_paths:
+                self.file_listbox.insert(tk.END, path)
+        self.update_buttons()
+
+    def delete_selected_file_csv(self):
+        selected_indices = self.csv_listbox.curselection()
+        if selected_indices:
+            for index in reversed(selected_indices):
+                del self.csv_paths[index]
+                self.csv_listbox.delete(index)
+            if self.current_index >= len(self.csv_paths):
+                self.current_index = len(self.csv_paths) - 1
+        self.update_buttons()
+
+    def delete_selected_file(self):
+        selected_indices = self.file_listbox.curselection()
+        if selected_indices:
+            for index in reversed(selected_indices):
+                del self.file_paths[index]
+                self.file_listbox.delete(index)
+            if self.current_index >= len(self.file_paths):
+                self.current_index = len(self.file_paths) - 1
+        self.update_buttons()
+
+    def update_buttons(self):
+        if len(self.file_paths) == len(self.csv_paths):
+            self.start_roi_button.config(state=tk.NORMAL)
+        else:
+            self.start_roi_button.config(state=tk.DISABLED)
+
+    def open_roi_window(self):
+        self.window.withdraw()
+        roi_window = tk.Toplevel(self.window)
+        roi_window = ROI_Window(
+            roi_window, 
+            file_paths=self.file_paths, 
+            csv_paths=self.csv_paths,
+            roi_coordinates=self.roi_coordinates, 
+            root_window=self.window
+            )
+        roi_window.show()
+
+class ROI_Window:
+    def __init__(self, top_window, file_paths, csv_paths, roi_coordinates, root_window):
+        self.file_paths = file_paths
+        self.csv_paths = csv_paths
+        self.current_index = 0
+        self.roi_coordinates = roi_coordinates
+        self.window = top_window
+        self.root_window = root_window
+        self.objects_ids = []
+        self.object_identities = []
+
+        self.mm_px, self.mm_py = br.obtain_mmpx_mmpy(self.csv_paths[self.current_index])
+        #print(self.mm_px, self.mm_py)
+        
+        self.create_widgets()
+
+    def create_widgets(self):
+        self.frame=tk.Frame(self.window)
+        self.frame.pack(side=tk.LEFT, anchor="center", pady=2)
+        
+        label_objecttype = tk.Label(self.frame, text="Type of object:")
+        label_objecttype.grid(row=0, column=0, pady=5, padx=5)
+        self.dropdown_objecttype = ttk.Combobox(self.frame, state="readonly", values=["Square", "Rectangle", "Oval"])
+        self.dropdown_objecttype.set("Square")
+        self.dropdown_objecttype.grid(row=0, column=1, pady=5, padx=5)
+        self.dropdown_objecttype.bind("<<ComboboxSelected>>", self.on_input_change)
+
+        #Entries for users to select the real size of the object
+        label_radius = tk.Label(self.frame, text="Oval radius (mm):")
+        label_radius.grid(row=1, column=0, padx=5, pady=5)
+        self.radius = tk.Entry(self.frame)
+        self.radius.grid(row=1, column=1,padx=5, pady=5)
+        self.radius.config(state="disabled")
+        label_side1 = tk.Label(self.frame, text="Side 1 rectangle (mm):")
+        label_side1.grid(row=2, column=0, padx=5, pady=5)
+        self.side1 = tk.Entry(self.frame)
+        self.side1.grid(row=2, column=1, padx=5, pady=5)
+        self.side1.config(state="normal")
+        label_side2 = tk.Label(self.frame, text="Side 2 rectangle (mm):")
+        label_side2.grid(row=3, column=0, padx=5, pady=5)
+        self.side2 = tk.Entry(self.frame)
+        self.side2.grid(row=3, column=1, padx=5, pady=5)
+        self.side2.config(state="disabled")
+
+        # Start drawing selection button
+        self.start_selection_button = ttk.Button(self.frame, text="Draw ROI", command=self.start_roi_selection)
+        self.start_selection_button.grid(row=4, pady=10, columnspan=2)
+
+        # Add clear button for restarting ROI selection
+        self.clear_button = ttk.Button(self.frame, text="Clear", command=self.clear_canvas)
+        self.clear_button.grid(row=5, pady=10, columnspan=2)
+        self.clear_button.config(state=tk.DISABLED)
+
+        # Add Approve Button
+        self.approve_button = ttk.Button(self.frame, text="Approve Object Selection", command=self.on_end_selection)
+        self.approve_button.grid(row=6, pady = 10, columnspan=2)
+        self.approve_button.config(state=tk.DISABLED)
+
+        #Next video button
+        self.next_button = ttk.Button(self.frame, text="Next File", state=tk.DISABLED, command=self.next_video)
+        self.next_button.grid(row=7, pady=20, columnspan=2)
+
+        #Canvas
+        self.canvas_frame = tk.Frame(self.window)
+        self.canvas_frame.pack(side='top', fill='both', expand=True)
+
+        self.canvas = tk.Canvas(self.canvas_frame, scrollregion=(0, 0, 1000, 1000))  # Placeholder size
+        self.canvas.pack(side='left', fill='both', expand=True)
+
+        self.v_scrollbar = ttk.Scrollbar(self.canvas_frame, orient='vertical', command=self.canvas.yview)
+        self.v_scrollbar.pack(side='right', fill='y')
+        self.canvas.config(yscrollcommand=self.v_scrollbar.set)
+
+        self.h_scrollbar = ttk.Scrollbar(self.window, orient='horizontal', command=self.canvas.xview)
+        self.h_scrollbar.pack(side='bottom', fill='x')
+        self.canvas.config(xscrollcommand=self.h_scrollbar.set)
+    
+    def on_input_change(self, event):
+        selection = self.dropdown_objecttype.get()
+        if selection == "Square":
+            self.radius.config(state="disabled")
+            self.side2.config(state="disabled")
+            self.side1.config(state="normal")
+        elif selection == "Rectangle":
+            self.radius.config(state="disabled")
+            self.side2.config(state="normal")
+            self.side1.config(state="normal")
+        elif selection == "Oval":
+            self.radius.config(state="normal")
+            self.side2.config(state="disabled")
+            self.side1.config(state="disabled")
+    
+    def show(self):
+        self.load_video()
+        self.window.deiconify()
+    
+    def load_video(self):
+        path = self.file_paths[self.current_index]
+        cap = cv2.VideoCapture(path)
+        if not cap.isOpened():
+            print(f"Can't open file: {path}")
+            return
+        
+        ret, frame = cap.read()
+        if ret:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            self.photo = ImageTk.PhotoImage(image=Image.fromarray(frame))
+            self.canvas.config(width=self.photo.width(), height=self.photo.height())
+            self.canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)
+        else:
+            print(f"Couldn't the frame from the file: {path}")
+            
+    def clear_canvas(self):
+        self.canvas.delete(self.current_object)
+        self.start_selection_button.config(state=tk.NORMAL)
+        self.dropdown_objecttype.config(state="readonly")
+        self.clear_button.config(state=tk.DISABLED)
+    
+    #Funcion que inicia el dibujo del ROI/Objeto
+    def start_roi_selection(self):
+        self.canvas.bind("<ButtonPress-1>", self.on_start_selection)
+        self.start_selection_button.config(state=tk.DISABLED)
+        self.dropdown_objecttype.config(state=tk.DISABLED)
+        
+    def on_start_selection(self, event):
+        self.start_x = event.x
+        self.start_y = event.y
+        if self.dropdown_objecttype.get() == "Square":
+            size_in_mm = float(self.side1.get())
+            end_x = self.start_x + (size_in_mm/self.mm_px)
+            end_y = self.start_y + (size_in_mm/self.mm_py)
+            self.current_object = self.canvas.create_rectangle(self.start_x, self.start_y, end_x, end_y, outline='red', width=2)
+        elif self.dropdown_objecttype.get() == "Rectangle":
+            size1_in_mm = float(self.side1.get())
+            size2_in_mm = float(self.side2.get())
+            end_x = self.start_x + (size1_in_mm/self.mm_px)
+            end_y = self.start_y + (size2_in_mm/self.mm_py)
+            self.current_object = self.canvas.create_rectangle(self.start_x, self.start_y, end_x, end_y, outline='red', width=2)
+        elif self.dropdown_objecttype.get() == "Oval":
+            radius_in_mm = float(self.radius.get())
+            start_x = self.start_x - (radius_in_mm/self.mm_px)
+            start_y = self.start_y - (radius_in_mm/self.mm_py)
+            end_x = self.start_x + (radius_in_mm/self.mm_px)
+            end_y = self.start_y + (radius_in_mm/self.mm_py)
+            self.current_object = self.canvas.create_oval(start_x, start_y, end_x, end_y)
+        # Allow approving of the drawing or clearing it
+        self.approve_button.config(state=tk.NORMAL)
+        self.clear_button.config(state=tk.NORMAL)
+        # Unable another drawing
+        self.canvas.unbind("<ButtonPress-1>")
+        # Allow moving the object
+        self.window.bind("<Up>", self.move_up)
+        self.window.bind("<Down>", self.move_down)
+        self.window.bind("<Left>", self.move_left)
+        self.window.bind("<Right>", self.move_right)
+
+    # Functions to move the rectangle
+    def move_up(self, event):
+        self.canvas.move(self.current_object, 0, -1)  
+    def move_down(self, event):
+        self.canvas.move(self.current_object, 0, 1)   
+    def move_left(self, event):
+        self.canvas.move(self.current_object, -1, 0)  
+    def move_right(self, event):
+        self.canvas.move(self.current_object, 1, 0)   
+    
+    # Function when you approve an object
+    def on_end_selection(self):
+        self.objects_ids.append(self.current_object)
+        self.object_identities.append(self.dropdown_objecttype.get())
+        self.canvas.itemconfig(self.current_object, outline="blue")
+        self.window.unbind("<Up>")
+        self.window.unbind("<Down>")
+        self.window.unbind("<Left>")
+        self.window.unbind("<Right>")
+
+        # Ready for next object selection
+        self.next_button.config(state=tk.NORMAL)
+        self.start_selection_button.config(state=tk.NORMAL)
+        self.dropdown_objecttype.config(state="readonly")
+        self.clear_button.config(state=tk.DISABLED)
+        self.approve_button.config(state=tk.DISABLED)
+
+    # Functions to move to next video
+    def next_video(self):
+        self.roi_coordinates[self.current_index] = [
+            self.file_paths[self.current_index],
+            self.csv_paths[self.current_index],
+            [self.canvas.coords(obj) for obj in self.objects_ids],
+            self.object_identities
+        ]
+
+        self.current_index += 1
+        if self.current_index < len(self.file_paths):
+            self.load_video()
+            self.objects_ids.clear()  # Clear previous squares
+            self.start_selection_button.config(state=tk.NORMAL)
+            self.next_button.config(state=tk.DISABLED)
+            self.mm_px, self.mm_py = br.obtain_mmpx_mmpy(self.csv_paths[self.current_index])
+        else:
+            self.window.destroy()
+            self.update_csv_with_roi()
+            self.root_window.deiconify()
+
+    def update_csv_with_roi(self):
+        length = len(self.file_paths)
+        br.add_roi_to_csvdata(length=length, roi_coordinates_dict=self.roi_coordinates)        
+
+#------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    main_window = tk.Tk()
-    app = Main_Window_PreAnalysis(main_window)
-    app.mainloop()
+    app = App()
