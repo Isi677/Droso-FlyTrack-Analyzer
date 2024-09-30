@@ -198,8 +198,6 @@ def distancia_promediada(total_filas, n_moscas, mm_px, mm_py, filtro, tiempo_x_f
     
     
     resultado = ordenar_datos_para_exc(resultado, titulos, n_moscas, listado_final, frames) 
-
-    print("Terminado!")
     return resultado, listado_final
 
 def distancia(total_filas, n_moscas, mm_px, mm_py, filtro, tiempo_x_fr, frames):

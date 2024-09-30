@@ -352,6 +352,7 @@ class Analysis_Window(BaseWindow):
         analyze_window.grid_columnconfigure(0, weight=1)
         
         self.abort_event = Event()
+        self.hide_window()
 
         # Función que corre en un hilo separado
         def run_analysis():
@@ -362,12 +363,25 @@ class Analysis_Window(BaseWindow):
                     preference_analysis=preference_analysis, 
                     centrophobism_analysis=centrophobism_analysis, n_rings=rings_number, 
                     total_frame_number=number_frames, record_time=video_duration, 
-                    stop_event=self.abort_event, progress=progress, text_var=text_var, raw_data_save=raw_data
+                    stop_event=self.abort_event, progress=progress, text_var=text_var, raw_data_save=raw_data,
+                    object_analysis=object_analysis
                 )
             except Exception as e:
                 print(f"An error occurred: {e}")
             finally:
                 analyze_window.destroy()
+                self.show_window()
+            """
+            ba.main_backend(
+                    data_groups=selected_groups, excels_coordinates=self.excels_coordinates, 
+                    filter_distance=distance_filter, filter_activity=activity_threshold, 
+                    preference_analysis=preference_analysis, 
+                    centrophobism_analysis=centrophobism_analysis, n_rings=rings_number, 
+                    total_frame_number=number_frames, record_time=video_duration, 
+                    stop_event=self.abort_event, progress=progress, text_var=text_var, raw_data_save=raw_data,
+                    object_analysis=object_analysis
+                )
+            """
 
         self.analysis_thread = Thread(target=run_analysis)
         self.analysis_thread.start()
@@ -430,7 +444,12 @@ class Analysis_Window(BaseWindow):
                                                            stop_event, progress, text_var))
         analyze_thread.start()
         check_thread()
+    
+    def hide_window(self):
+        self.window.withdraw()
 
+    def show_window(self):
+        self.window.deiconify()
 #------------------------------------------------------------------------------------------------------
 #Ventana asociada a Seleccion de Objetos
 class Window_ROI_Selection(BaseWindow):

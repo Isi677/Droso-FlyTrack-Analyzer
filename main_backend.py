@@ -10,7 +10,8 @@ def main_backend(data_groups, excels_coordinates,
                  filter_distance, filter_activity, 
                  preference_analysis, centrophobism_analysis, n_rings, 
                  total_frame_number, record_time, 
-                 stop_event, progress, text_var, raw_data_save):
+                 stop_event, progress, text_var, raw_data_save,
+                 object_analysis):
     
     tiempo = record_time / total_frame_number
     
@@ -30,6 +31,8 @@ def main_backend(data_groups, excels_coordinates,
         listados_social_C = []
         listados_social_E = []
         ROI_coords = []
+
+        listados_objetos = []
 
         num_total = len(info_videos)
         contador = 0
@@ -88,9 +91,7 @@ def main_backend(data_groups, excels_coordinates,
                 
                 #-----------------------------------------------------------------------
                 #Se obtienen datos crudos por frame con la funcion distancia
-                #Funcion distancia: entrega una lista para pasarla a excel y una lista con sub-listas que reflejan cada mosca
-
-                print("Generating Raw Data...")        
+                #Funcion distancia: entrega una lista para pasarla a excel y una lista con sub-listas que reflejan cada mosca    
                 distancia_R, listado_R = f.distancia(
                     total_filas=filas_vacios_rellenados, n_moscas=n_moscas_video, 
                     mm_px=mm_px, mm_py=mm_py, filtro=filter_distance, tiempo_x_fr=tiempo, 
@@ -182,7 +183,25 @@ def main_backend(data_groups, excels_coordinates,
                 listados_pref_R.append(listado_pref_R)
                 listados_pref_E.append(listado_pref_E)
                 listados_pref_C.append(listado_pref_C)
+            
+            if not stop_event.is_set() and object_analysis:
+                print("Starting object analysis...")
+                #El archivo excel se transforma csv              
+                df1 = pd.read_excel(path_video, sheet_name = "Data Objects Coordinates") 
+                df1.to_csv(f"{video[0]}.csv", index = None)
         
+                #Se abre el csv creado para leer cada fila
+                with open(f"{video[0]}.csv", "r") as file:
+                    filas = file.readlines()
+                    data = filas[1:]
+                    updated_data = []
+                    for e in data:
+                        e = e.strip().split(",")
+                        updated_data.append(e)
+                    #print(updated_data)
+                    listados_objetos.append(updated_data)
+        
+                os.remove(f"{video[0]}.csv")
         if not stop_event.is_set():
             print() 
             print("Calculando parámetros finales...")   
@@ -192,33 +211,33 @@ def main_backend(data_groups, excels_coordinates,
                 datos_videos=listados_C, n_moscas=n_moscas_video, filtro=filter_activity,
                 analizar_centrofobismo=centrophobism_analysis, datos_dist_pared=listados_pared_C, 
                 analizar_preferencia=preference_analysis, datos_preferencia=listados_pref_C, 
-                n_ring=n_rings, datos_social=listados_social_C, tiempo_x_fr=tiempo
+                n_ring=n_rings, datos_social=listados_social_C, tiempo_x_fr=tiempo, objetos=listados_objetos
                 )
             print("Parámetros de data con vacios rellenados")
             summary_R = summary(
                 datos_videos=listados_R, n_moscas=n_moscas_video, filtro=filter_activity,
                 analizar_centrofobismo=centrophobism_analysis, datos_dist_pared=listados_pared_R,
                 analizar_preferencia=preference_analysis, datos_preferencia=listados_pref_R, 
-                n_ring=n_rings, datos_social=listados_social_R, tiempo_x_fr=tiempo
+                n_ring=n_rings, datos_social=listados_social_R, tiempo_x_fr=tiempo, objetos=listados_objetos
                 )
             print("Parámetros de data con vacios eliminados")
             summary_E = summary(
                 datos_videos=listados_E, n_moscas=n_moscas_video, filtro=filter_activity, 
                 analizar_centrofobismo=centrophobism_analysis,datos_dist_pared=listados_pared_E, 
                 analizar_preferencia=preference_analysis, datos_preferencia=listados_pref_C, 
-                n_ring=n_rings, datos_social=listados_social_E, tiempo_x_fr=tiempo
+                n_ring=n_rings, datos_social=listados_social_E, tiempo_x_fr=tiempo, objetos=listados_objetos
                 )
             
             summary_E = pd.DataFrame(summary_E)
             summary_R = pd.DataFrame(summary_R)
             summary_C = pd.DataFrame(summary_C)
-            print("Guardando excel resumen...")
+            print("Saving summary excel...")
             if not os.path.exists(f"./Analisis Resumen"):
                 os.makedirs(f"./Analisis Resumen")
             writer = pd.ExcelWriter(f"Analisis Resumen/Summary - {group_name}.xlsx", engine='openpyxl')
+            summary_C.to_excel(writer, sheet_name="Data Vacios Promediados")
             summary_R.to_excel(writer, sheet_name="Data Vacios Rellenados")
             summary_E.to_excel(writer, sheet_name="Data Vacios Eliminados")
-            summary_C.to_excel(writer, sheet_name="Data Vacios Promediados")
             try: 
                 writer.save()
             except:

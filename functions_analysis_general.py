@@ -1,4 +1,5 @@
 from statistics import mean
+import functions_analysis_objects as ab
 
 def calculate_distance (posX1, posY1, posX2, posY2, mm_px, mm_py):
     #Se calculan las diferencias cuadradas de posiciones
@@ -65,6 +66,7 @@ class Drosophila:
         self.avg_acceleration_with_0 = None
         self.avg_acceleration_without_0 = None
         self.avg_acceleration_with_filter = None
+
 
     def __str__(self) -> str:
         return f"Drosophila Object"
@@ -188,6 +190,23 @@ class Drosophila:
             tiempo_promedio = mean(lista)
         
         return tiempo_promedio
+    
+    def set_object_visit_counter(self, objects):
+        self.object_counter = []
+
+        for object in objects:
+            new_object = ab.Object_Rec(type_obj=object[4], scale_factor=6, coord=object[0:4])
+            self.object_counter.append(new_object)
+
+    def evaluate_object_visit(self, x, y, time_per_frame):
+        for object in self.object_counter:
+            object.evaluate_visit(x, y, time_per_frame)
+
+    def average_object_data(self):
+        results = []
+        for object in self.object_counter:
+            results.append(object.average_data())
+        return results
 
 #---------------------------------------------------------------------------------
 #FUNCIONES RELACIONADAS CON LA GENERACIÓN DE UN ARCHIVO RESUMEN
@@ -209,7 +228,7 @@ def calculate_scores (n_rings):
 def summary(datos_videos, n_moscas, filtro, 
             analizar_centrofobismo, datos_dist_pared,
             analizar_preferencia, datos_preferencia,
-            n_ring, datos_social, tiempo_x_fr):
+            n_ring, datos_social, tiempo_x_fr, objetos):
     data_final = [["# Fly", "Travelled Distance (mm)", 
                     "Mean velocity (mm/s)", "Mean velocity, not considering zeros", 
                     f"Mean velocity, considering values higher than {filtro} mm/s", 
@@ -240,6 +259,15 @@ def summary(datos_videos, n_moscas, filtro,
     else:
         analizar_sociabilidad = False
     
+    #Se agregan títulos de objetos
+    if objetos != []:
+        max_objects = 0
+        for objs in objetos:
+            if len(objs) > max_objects:
+                max_objects = len(objs)
+        for i in range (0, max_objects):
+            data_final[0] += [f"Visit Frequency {i}", f"Average Visit Time {i}", f"Return Frequency {i}", f"Average Return Time {i}"]
+
     #Se recorre cada video
     for j in range (len(datos_videos)):
         mosca_video = 0
@@ -273,6 +301,12 @@ def summary(datos_videos, n_moscas, filtro,
             time_interaction = 0
             distances_closest_neighbour = []
             distances_all_neighbours = []
+
+            #Objetos
+            if objetos != []:
+                analyze_objects = True
+                lista_objetos = objetos[k]
+                fly.set_object_visit_counter(objects=lista_objetos)
             
             #Se recorren las coordenadas de la mosca particular 
             for i in range (0, len(data_mosca)):
@@ -342,6 +376,13 @@ def summary(datos_videos, n_moscas, filtro,
                         pf_top += tiempo_x_fr
                     elif datos_preferencia[j][k][i][2] == "Bottom":
                         pf_bottom += tiempo_x_fr
+                
+                #Se evaluan objetos
+                if analyze_objects:                
+                    posx = float(data_actual[2])
+                    posy = float(data_actual[3])
+
+                    fly.evaluate_object_visit(x=posx, y=posy, time_per_frame=tiempo_x_fr)
 
                 fly.add_data(filter=filtro, speed=velocidad, acel=aceleracion, timexfr=tiempo_x_fr)
 
@@ -382,7 +423,15 @@ def summary(datos_videos, n_moscas, filtro,
                 mean_dist_closest_neighbour = mean(distances_closest_neighbour)
                 mean_dist_all_neighbour = mean(distances_all_neighbours)
                 data_agregar += [time_interaction, mean_dist_closest_neighbour, mean_dist_all_neighbour]
-    
+            
+            #Se evalúan objetos
+            if analyze_objects:
+                object_data_final = fly.average_object_data()
+
+                for data in object_data_final:
+                    #print(data)
+                    data_agregar += data
+
             data_final.append(data_agregar)  
 
     return data_final
