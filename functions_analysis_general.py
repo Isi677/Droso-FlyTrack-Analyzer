@@ -195,7 +195,7 @@ class Drosophila:
         self.object_counter = []
 
         for object in objects:
-            new_object = ab.Object_Rec(type_obj=object[4], scale_factor=6, coord=object[0:4])
+            new_object = ab.Object_Rec(type_obj=object[4], scale_factor=4, coord=object[0:4])
             self.object_counter.append(new_object)
 
     def evaluate_object_visit(self, x, y, time_per_frame):
@@ -307,6 +307,8 @@ def summary(datos_videos, n_moscas, filtro,
                 analyze_objects = True
                 lista_objetos = objetos[k]
                 fly.set_object_visit_counter(objects=lista_objetos)
+            else:
+                analyze_objects = False
             
             #Se recorren las coordenadas de la mosca particular 
             for i in range (0, len(data_mosca)):
