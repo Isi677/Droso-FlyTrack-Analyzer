@@ -191,11 +191,11 @@ class Drosophila:
         
         return tiempo_promedio
     
-    def set_object_visit_counter(self, objects):
+    def set_object_visit_counter(self, objects, sf):
         self.object_counter = []
 
         for object in objects:
-            new_object = ab.Object_Rec(type_obj=object[4], scale_factor=4, coord=object[0:4])
+            new_object = ab.Object_Rec(type_obj=object[4], scale_factor=sf, coord=object[0:4])
             self.object_counter.append(new_object)
 
     def evaluate_object_visit(self, x, y, time_per_frame):
@@ -228,7 +228,7 @@ def calculate_scores (n_rings):
 def summary(datos_videos, n_moscas, filtro, 
             analizar_centrofobismo, datos_dist_pared,
             analizar_preferencia, datos_preferencia,
-            n_ring, datos_social, tiempo_x_fr, objetos):
+            n_ring, datos_social, tiempo_x_fr, objetos, scaling_factor):
     data_final = [["# Fly", "Travelled Distance (mm)", 
                     "Mean velocity (mm/s)", "Mean velocity, not considering zeros", 
                     f"Mean velocity, considering values higher than {filtro} mm/s", 
@@ -306,7 +306,7 @@ def summary(datos_videos, n_moscas, filtro,
             if objetos != []:
                 analyze_objects = True
                 lista_objetos = objetos[k]
-                fly.set_object_visit_counter(objects=lista_objetos)
+                fly.set_object_visit_counter(objects=lista_objetos, sf=scaling_factor)
             else:
                 analyze_objects = False
             

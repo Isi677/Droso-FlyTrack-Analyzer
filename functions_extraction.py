@@ -3,13 +3,13 @@ from functions_analysis_general import calculate_distance, ordenar_datos_para_ex
 def rellenar_vacios(filas, n_moscas):
     total_filas = []
     posicion_mosca = -1
-    data_anterior = filas[8].strip().split(",")
+    data_anterior = filas[0].strip().split(",")
 
     for i in range (1, n_moscas+1):
         posicion_mosca += 2
         filas_nuevas = []
 
-        for i in range (8, len(filas)):
+        for i in range (1, len(filas)):
             data_actual = filas[i].strip().split(",")
 
             if data_actual[0] != "":
@@ -44,7 +44,7 @@ def saltarse_vacios(filas, n_moscas):
     for i in range (1, n_moscas+1):
         posicion_mosca += 2
         filas_nuevas = []
-        j = 8
+        j = 0
 
         while j != len(filas):
             data_actual = filas[j].strip().split(",")
@@ -64,12 +64,12 @@ def saltarse_vacios(filas, n_moscas):
 def vacios_iguales(filas, n_moscas):
     total_filas = []
     posicion_mosca = -1
-    data_anterior = filas[8].strip().split(",")
+    data_anterior = filas[0].strip().split(",")
 
     for i in range (1, n_moscas+1):
         posicion_mosca += 2
         filas_nuevas = []
-        for j in range (8, len(filas)):
+        for j in range (1, len(filas)):
             data_actual = filas[j].strip().split(",")
 
             if data_actual == "":
@@ -96,6 +96,60 @@ def vacios_iguales(filas, n_moscas):
 
         total_filas.append(filas_nuevas)  
     return total_filas
+
+
+def rellenar_vacios_bonsai(filas):
+    total_filas = []
+    data_anterior = filas[0].strip().split(",")
+
+    for i in range (1, len(filas)):
+        data_actual = filas[i].strip().split(",")
+        frame = i
+
+        if data_actual[0] == "" or data_actual[1] == "" or data_actual[0] == "NaN" or data_actual[1] == "NaN":
+            #Si no existe valor x o no existe el valor y
+            posicionx = float(data_anterior[0])
+            posiciony = float(data_anterior[1])
+        else:
+            #Si existe valor x y existe el valor y
+            posicionx = float(data_actual[0])
+            posiciony = float(data_actual[1])
+        
+        fila_nueva = [frame, posicionx, posiciony]
+        data_anterior = fila_nueva
+        total_filas.append(fila_nueva)
+       
+    return [total_filas]
+
+def saltarse_vacios_bonsai(filas):
+    total_filas = []
+    for i in range(len(filas)):
+        data_actual = filas[i].strip().split(",")
+        if data_actual[0] != "" and data_actual[1] != "" and data_actual[0] != "NaN" and data_actual[1] != "NaN":
+            #Si existen los datos y el frame
+            frame = i+1
+            posicionx = float(data_actual[0])
+            posiciony = float(data_actual[1])
+            fila_nueva = [frame, posicionx, posiciony]
+            total_filas.append(fila_nueva)
+    return [total_filas]
+
+def vacios_iguales_bonsai(filas):
+    total_filas = []
+    for j in range (0, len(filas)):
+        data_actual = filas[j].strip().split(",")
+        frame = j+1
+        if data_actual[0] == "" or data_actual[1] == "" or data_actual[0] == "NaN" or data_actual[1] == "NaN":
+            posicionx = 0
+            posiciony = 0
+        else:
+            posicionx = float(data_actual[0])
+            posiciony = float(data_actual[1])
+            
+        fila_nueva = [frame, posicionx, posiciony]
+        total_filas.append(fila_nueva)
+
+    return [total_filas]
 
 def ROI_coordenadas(filas):
     filas_final = []

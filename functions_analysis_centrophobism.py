@@ -1,4 +1,5 @@
 from functions_analysis_general import calculate_distance, ordenar_datos_para_exc
+import numpy as np
 
 def closest_node(node, nodes):
     from scipy.spatial import distance
@@ -155,3 +156,27 @@ def distance_from_wall(total_filas, coord_circulo, n_moscas, mm_px, mm_py, n_ani
     resultado = ordenar_datos_para_exc(resultado, titulos, n_moscas, listado_final, frames)
 
     return resultado, listado_final  
+
+def generate_circle(coords):
+    #import matplotlib.pyplot as plt
+    # Calcular el centro y el radio del círculo
+    x0, y0 = coords[0]
+    x1, y1 = coords[1]
+    
+    # Centro del círculo
+    xc = (x0 + x1) / 2
+    yc = (y0 + y1) / 2
+    
+    # Radio del círculo
+    width = abs(x1 - x0)
+    height = abs(y1 - y0)
+    radius = min(width, height) / 2
+    
+    # Generar las coordenadas del círculo con más puntos
+    theta = np.linspace(0, 2 * np.pi, 1000)
+    circle_x = xc + radius * np.cos(theta)
+    circle_y = yc + radius * np.sin(theta)
+    
+    # Crear la lista de tuplas con las coordenadas del círculo
+    circle_coords = list(zip(circle_x, circle_y))
+    return circle_coords

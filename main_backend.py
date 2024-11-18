@@ -2,16 +2,16 @@ import os
 import pandas as pd
 import functions_extraction as f
 from functions_analysis_social import interaction
-from functions_analysis_centrophobism import distance_from_wall
+from functions_analysis_centrophobism import distance_from_wall, generate_circle
 from functions_analysis_preference import preference
 from functions_analysis_general import summary
 
-def main_backend(data_groups, excels_coordinates, 
+def main_backend(data_type, data_groups, excels_coordinates, 
                  filter_distance, filter_activity, 
                  preference_analysis, centrophobism_analysis, n_rings, 
                  total_frame_number, record_time, 
                  stop_event, progress, text_var, raw_data_save,
-                 object_analysis):
+                 object_analysis, scaling_factor):
     
     tiempo = record_time / total_frame_number
     
@@ -30,8 +30,6 @@ def main_backend(data_groups, excels_coordinates,
         listados_social_R = []
         listados_social_C = []
         listados_social_E = []
-        ROI_coords = []
-
         listados_objetos = []
 
         num_total = len(info_videos)
@@ -39,6 +37,7 @@ def main_backend(data_groups, excels_coordinates,
         
         #Se va a ver video por video dentro del grupo
         for video in info_videos:
+            coord_ROI = []
             if not stop_event.is_set():
                 print(f"Starting analysis: {video[0]}...")
                 
@@ -54,39 +53,57 @@ def main_backend(data_groups, excels_coordinates,
             if not stop_event.is_set():
                 print("Fetching ROI data...")
                 #El archivo excel se transforma csv
-                df = pd.read_excel(path_video, sheet_name = 1) 
-                df.to_csv(f"{video[0]}-ROI.csv", index = None)
-        
-                with open(f"{video[0]}-ROI.csv", "r") as file:
-                    filas = file.readlines()
-        
-                    coord_ROI  = f.ROI_coordenadas(filas)
-                ROI_coords.append(coord_ROI)
-                os.remove(f"{video[0]}-ROI.csv")
+                if data_type == "Bonsai":
+                    df = pd.read_excel(path_video, sheet_name = "Data ROI + mm per pixel") 
+                    df.to_csv(f"{video[0]}-ROI.csv", index = None)
+                    with open(f"{video[0]}-ROI.csv", "r") as file:
+                        filas = file.readlines()
+                    os.remove(f"{video[0]}-ROI.csv")
+    
+                    roi_parameters = filas[1].strip().split(",")
+                    coords_0 = min(float(roi_parameters[0]), float(roi_parameters[1]))
+                    coords_1 = max(float(roi_parameters[2]), float(roi_parameters[3]))
+                    coord_ROI.append((coords_0, coords_0))
+                    coord_ROI.append((coords_1, coords_1))
+                    coord_ROI = generate_circle(coords=coord_ROI)
+                    mm_px = float(roi_parameters[4])
+                    mm_py = float(roi_parameters[5])
+
+                elif data_type == "IOWA":
+                    df = pd.read_excel(path_video, sheet_name = 1) 
+                    df.to_csv(f"{video[0]}-ROI.csv", index = None)
+                    with open(f"{video[0]}-ROI.csv", "r") as file:
+                        filas = file.readlines()
+                        coord_ROI  = f.ROI_coordenadas(filas)
+                    os.remove(f"{video[0]}-ROI.csv")
 
             if not stop_event.is_set():
                 print(f"Fetching flies coordinates from video...")
-        
-                #El archivo excel se transforma csv
-                #print(f"Creating {video[0]}.csv...")                
+                #El archivo excel se transforma csv         
                 df1 = pd.read_excel(path_video, sheet_name = 0) 
                 df1.to_csv(f"{video[0]}.csv", index = None)
         
                 #Se abre el csv creado para leer cada fila
                 with open(f"{video[0]}.csv", "r") as file:
                     filas = file.readlines()
-        
-                    #Se obteninen los datos de mm por pixel
-                    mm_px = filas[4].strip().split(",")
-                    mm_py = filas[5].strip().split(",")
-                    mm_px = float(mm_px[1])
-                    mm_py = float(mm_py[1])
-        
-                    #Se procesan las coordenadas para:
-                    print("Proccesing coordinates...")
-                    filas_sin_vacios = f.saltarse_vacios(filas, n_moscas_video) #que no tengan datos vacios
-                    filas_vacios_rellenados = f.rellenar_vacios(filas, n_moscas_video) #que los datos vacios se rellenen con el dato anterior
-                    filas_con_vacios = f.vacios_iguales(filas, n_moscas_video) #datos con vacios llenados con posicion x e y igual a 0
+                    if data_type == "IOWA":        
+                        #Se obtienen los datos de mm por pixel
+                        mm_px = filas[4].strip().split(",")
+                        mm_py = filas[5].strip().split(",")
+                        mm_px = float(mm_px[1])
+                        mm_py = float(mm_py[1])
+                        filas = filas[8:]
+
+                        print("Proccesing coordinates...")
+                        filas_sin_vacios = f.saltarse_vacios(filas, n_moscas_video) #que no tengan datos vacios
+                        filas_vacios_rellenados = f.rellenar_vacios(filas, n_moscas_video) #que los datos vacios se rellenen con el dato anterior
+                        filas_con_vacios = f.vacios_iguales(filas, n_moscas_video) #datos con vacios llenados con posicion x e y igual a 0
+
+                    elif data_type == "Bonsai":
+                        print("Proccesing coordinates...")
+                        filas_sin_vacios = f.saltarse_vacios_bonsai(filas) #que no tengan datos vacios
+                        filas_vacios_rellenados = f.rellenar_vacios_bonsai(filas) #que los datos vacios se rellenen con el dato anterior
+                        filas_con_vacios = f.vacios_iguales_bonsai(filas) #datos con vacios llenados con posicion x e y igual a 0
                 os.remove(f"{video[0]}.csv")
                 
                 #-----------------------------------------------------------------------
@@ -128,15 +145,16 @@ def main_backend(data_groups, excels_coordinates,
                 dist_pared_R, listado_pared_R = distance_from_wall(filas_vacios_rellenados, coord_ROI, n_moscas_video, mm_px, mm_py, n_rings, tiempo, total_frame_number)
                 dist_pared_E, listado_pared_E = distance_from_wall(filas_sin_vacios, coord_ROI, n_moscas_video, mm_px, mm_py, n_rings, tiempo, total_frame_number)
                 
-                df_rellenado_pared = pd.DataFrame(dist_pared_R)
-                df_convacios_pared = pd.DataFrame(dist_pared_C)
-                df_eliminado_pared = pd.DataFrame(dist_pared_E)
-                if not os.path.exists(f"./Analisis Centrofobismo/{group_name}"):
-                    os.makedirs(f"./Analisis Centrofobismo/{group_name}")
-                with pd.ExcelWriter(f"Analisis Centrofobismo/{group_name}/{nombre_video}.xlsx") as writer:
-                    df_rellenado_pared.to_excel(writer, sheet_name="Data Vacios Rellenados")
-                    df_eliminado_pared.to_excel(writer, sheet_name="Data Vacios Eliminados")
-                    df_convacios_pared.to_excel(writer, sheet_name="Data Vacios Incluidos")
+                if raw_data_save:
+                    df_rellenado_pared = pd.DataFrame(dist_pared_R)
+                    df_convacios_pared = pd.DataFrame(dist_pared_C)
+                    df_eliminado_pared = pd.DataFrame(dist_pared_E)
+                    if not os.path.exists(f"./Analisis Centrofobismo/{group_name}"):
+                        os.makedirs(f"./Analisis Centrofobismo/{group_name}")
+                    with pd.ExcelWriter(f"Analisis Centrofobismo/{group_name}/{nombre_video}.xlsx") as writer:
+                        df_rellenado_pared.to_excel(writer, sheet_name="Data Vacios Rellenados")
+                        df_eliminado_pared.to_excel(writer, sheet_name="Data Vacios Eliminados")
+                        df_convacios_pared.to_excel(writer, sheet_name="Data Vacios Incluidos")
                 
                 listados_pared_R.append(listado_pared_R)
                 listados_pared_E.append(listado_pared_E)
@@ -202,30 +220,31 @@ def main_backend(data_groups, excels_coordinates,
                     listados_objetos.append(updated_data)
         
                 os.remove(f"{video[0]}.csv")
+        
         if not stop_event.is_set():
             print() 
-            print("Calculando parámetros finales...")   
+            print("Calculating final parameters..")   
             #Con los listados finales, se calculan parámetros generales de cada video y mosca por video
-            print("Parámetros de data con vacios promediados")
             summary_C = summary(
                 datos_videos=listados_C, n_moscas=n_moscas_video, filtro=filter_activity,
                 analizar_centrofobismo=centrophobism_analysis, datos_dist_pared=listados_pared_C, 
                 analizar_preferencia=preference_analysis, datos_preferencia=listados_pref_C, 
-                n_ring=n_rings, datos_social=listados_social_C, tiempo_x_fr=tiempo, objetos=listados_objetos
+                n_ring=n_rings, datos_social=listados_social_C, tiempo_x_fr=tiempo, objetos=listados_objetos,
+                scaling_factor=scaling_factor
                 )
-            print("Parámetros de data con vacios rellenados")
             summary_R = summary(
                 datos_videos=listados_R, n_moscas=n_moscas_video, filtro=filter_activity,
                 analizar_centrofobismo=centrophobism_analysis, datos_dist_pared=listados_pared_R,
                 analizar_preferencia=preference_analysis, datos_preferencia=listados_pref_R, 
-                n_ring=n_rings, datos_social=listados_social_R, tiempo_x_fr=tiempo, objetos=listados_objetos
+                n_ring=n_rings, datos_social=listados_social_R, tiempo_x_fr=tiempo, 
+                objetos=listados_objetos, scaling_factor=scaling_factor
                 )
-            print("Parámetros de data con vacios eliminados")
             summary_E = summary(
                 datos_videos=listados_E, n_moscas=n_moscas_video, filtro=filter_activity, 
                 analizar_centrofobismo=centrophobism_analysis,datos_dist_pared=listados_pared_E, 
                 analizar_preferencia=preference_analysis, datos_preferencia=listados_pref_C, 
-                n_ring=n_rings, datos_social=listados_social_E, tiempo_x_fr=tiempo, objetos=listados_objetos
+                n_ring=n_rings, datos_social=listados_social_E, tiempo_x_fr=tiempo, 
+                objetos=listados_objetos, scaling_factor=scaling_factor
                 )
             
             summary_E = pd.DataFrame(summary_E)

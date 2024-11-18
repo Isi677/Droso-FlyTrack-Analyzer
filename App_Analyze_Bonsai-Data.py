@@ -20,11 +20,14 @@ class App:
         title_label = ttk.Label(self.menu_window, text="Droso-FlyTrack-Analyzer", font=("Helvetica", 12))
         title_label.pack(pady=20)
 
-        button2 = ttk.Button(self.menu_window, text="Excel Coordinates Analysis", command=self.open_window_2)
-        button2.pack(pady=10, padx=20)
+        buttonArena = ttk.Button(self.menu_window, text="Arena Selection", command=self.open_window_Arena)
+        buttonArena.pack(pady=10, padx=20)
 
         button_ROI = ttk.Button(self.menu_window, text="Selection of Objects (Object Recognition Assay)", command=self.open_window_ROI)
         button_ROI.pack(pady=10, padx=20)
+
+        button1 = ttk.Button(self.menu_window, text="Excel Coordinates Analysis", command=self.open_window_Analysis)
+        button1.pack(pady=10, padx=20)
         
         self.menu_window.mainloop()
 
@@ -33,9 +36,14 @@ class App:
         window = Window_ROI_Selection(self)
         window.show()
 
-    def open_window_2(self):
+    def open_window_Analysis(self):
         self.menu_window.destroy()
         window = Analysis_Window(self)
+        window.show()
+
+    def open_window_Arena(self):
+        self.menu_window.destroy()
+        window = ArenaROI_Window_Selection(self)
         window.show()
 
     def back_to_menu(self, current_window):
@@ -47,6 +55,7 @@ class BaseWindow:
         self.app = app
         self.window = tk.Tk()
         self.window.title(title)
+        
 
     def show(self):
         self.window.mainloop()
@@ -60,7 +69,7 @@ class Analysis_Window(BaseWindow):
     def __init__ (self, app):
         super().__init__(app, "Ventana de Análisis de Coordenadas")
         self.window.title("Droso-FlyTrack-Analyzer by Isidora Almonacid Torres")
-
+    
         style = ttk.Style()
         style.configure("Treeview.Heading", font=("Helvetica", 10, "bold"))
 
@@ -170,6 +179,7 @@ class Analysis_Window(BaseWindow):
         self.rings_entry = tk.Entry(self.parameters_frame, validate="key", validatecommand=(self.window.register(self.validate_rings_number), '%P'))
         self.rings_entry.grid(row=1, column=5, padx=5, pady=5, sticky="ew")
         self.rings_entry.bind("<KeyRelease>", self.on_input_change)
+        self.rings_entry.config(state=tk.DISABLED)
 
         tk.Label(self.parameters_frame, text="Scaling Factor (OBR):").grid(row=2, column=0, padx=5, pady=5, sticky="w")
         self.scaling_factor_entry = tk.Entry(self.parameters_frame)
@@ -382,7 +392,7 @@ class Analysis_Window(BaseWindow):
         def run_analysis():
             try:
                 ba.main_backend(
-                    data_type="IOWA",
+                    data_type="Bonsai", 
                     data_groups=selected_groups, excels_coordinates=self.excels_coordinates, 
                     filter_distance=distance_filter, filter_activity=activity_threshold, 
                     preference_analysis=preference_analysis, 
@@ -398,7 +408,7 @@ class Analysis_Window(BaseWindow):
                 self.show_window()
             """
             ba.main_backend(
-                    data_type="IOWA",
+                    data_type = "Bonsai",
                     data_groups=selected_groups, excels_coordinates=self.excels_coordinates, 
                     filter_distance=distance_filter, filter_activity=activity_threshold, 
                     preference_analysis=preference_analysis, 
@@ -476,6 +486,7 @@ class Analysis_Window(BaseWindow):
 
     def show_window(self):
         self.window.deiconify()
+
 #------------------------------------------------------------------------------------------------------
 #Ventana asociada a Seleccion de Objetos
 class Window_ROI_Selection(BaseWindow):
@@ -596,7 +607,7 @@ class ROI_Window:
         self.objects_ids = []
         self.object_identities = []
 
-        self.mm_px, self.mm_py = br.obtain_mmpx_mmpy(self.csv_paths[self.current_index])
+        self.mm_px, self.mm_py = br.obtain_mmpx_mmpy_Bonsai(self.csv_paths[self.current_index])
         #print(self.mm_px, self.mm_py)
         
         self.create_widgets()
@@ -783,7 +794,7 @@ class ROI_Window:
             self.objects_ids.clear()  # Clear previous squares
             self.start_selection_button.config(state=tk.NORMAL)
             self.next_button.config(state=tk.DISABLED)
-            self.mm_px, self.mm_py = br.obtain_mmpx_mmpy(self.csv_paths[self.current_index])
+            self.mm_px, self.mm_py = br.obtain_mmpx_mmpy_Bonsai(self.csv_paths[self.current_index])
         else:
             self.window.destroy()
             self.update_csv_with_roi()
@@ -792,6 +803,304 @@ class ROI_Window:
     def update_csv_with_roi(self):
         length = len(self.file_paths)
         br.add_roi_to_csvdata(length=length, roi_coordinates_dict=self.roi_coordinates)        
+
+#------------------------------------------------------------------------------------------------------
+#Ventana asociada a Seleccion de Arena
+class ArenaROI_Window_Selection(BaseWindow):
+    def __init__(self, app):
+        super().__init__(app, "Arena Selection Window")
+        self.file_paths = []
+        self.csv_paths = []
+        self.current_index = 0
+        self.roi_coordinates = {}
+        self.create_widgets()
+
+    def create_widgets(self):
+    #Widgets de la izquierda
+        left_frame = tk.Frame(self.window)
+        left_frame.grid(row=1, column=0, padx=5, pady=5, sticky="ew")
+
+        select_button = ttk.Button(left_frame, text="Select mp4 files", command=self.select_files)
+        select_button.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        delete_button = ttk.Button(left_frame, text="Delete mp4 selected files", command=self.delete_selected_file)
+        delete_button.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        self.file_listbox = tk.Listbox(left_frame, width=80, height=15)
+        self.file_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        y_scrollbar = ttk.Scrollbar(left_frame, orient="vertical", command=self.file_listbox.yview)
+        y_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        x_scrollbar = ttk.Scrollbar(self.window, orient="horizontal", command=self.file_listbox.xview)
+        x_scrollbar.grid(row=2, column=0, sticky="ew")
+        self.file_listbox.config(yscrollcommand=y_scrollbar.set, xscrollcommand=x_scrollbar.set)
+
+        #Widgets de la derecha
+        right_frame = tk.Frame(self.window)
+        right_frame.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+
+        select_button = ttk.Button(right_frame, text="Select CSV files", command=self.select_files_csv)
+        select_button.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        delete_button = ttk.Button(right_frame, text="Delete CSV selected files", command=self.delete_selected_file_csv)
+        delete_button.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        self.csv_listbox = tk.Listbox(right_frame, width=80, height=15)
+        self.csv_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        y_scrollbar_csv = ttk.Scrollbar(right_frame, orient="vertical", command=self.csv_listbox.yview)
+        y_scrollbar_csv.pack(side=tk.RIGHT, fill=tk.Y)
+        x_scrollbar_csv = ttk.Scrollbar(self.window, orient="horizontal", command=self.csv_listbox.xview)
+        x_scrollbar_csv.grid(row=2, column=1, sticky="ew")
+        self.csv_listbox.config(yscrollcommand=y_scrollbar_csv.set, xscrollcommand=x_scrollbar_csv.set)
+
+        #Widgets inferiores
+        self.start_roi_button = ttk.Button(self.window, text="Select Arena ROI", command=self.open_roi_window, state=tk.DISABLED)
+        self.start_roi_button.grid(row=3, column=0, pady=10)
+
+        back_button = ttk.Button(self.window, text="Back to Menu", command=self.back_to_menu)
+        back_button.grid(row=4, pady=5, padx=5, columnspan=2)
+
+    def select_files_csv(self):
+        self.csv_paths = list(filedialog.askopenfilenames(filetypes=[("CSV files", "*.csv")]))
+        if self.csv_paths:
+            self.csv_listbox.delete(0, tk.END)
+            for path in self.csv_paths:
+                self.csv_listbox.insert(tk.END, path)
+        self.update_buttons()
+
+    def select_files(self):
+        self.file_paths = list(filedialog.askopenfilenames(filetypes=[("MP4 files", "*.mp4")]))
+        print(self.file_paths)
+        if self.file_paths:
+            self.file_listbox.delete(0, tk.END)
+            for path in self.file_paths:
+                self.file_listbox.insert(tk.END, path)
+        self.update_buttons()
+
+    def delete_selected_file_csv(self):
+        selected_indices = self.csv_listbox.curselection()
+        if selected_indices:
+            for index in reversed(selected_indices):
+                del self.csv_paths[index]
+                self.csv_listbox.delete(index)
+            if self.current_index >= len(self.csv_paths):
+                self.current_index = len(self.csv_paths) - 1
+        self.update_buttons()
+
+    def delete_selected_file(self):
+        selected_indices = self.file_listbox.curselection()
+        if selected_indices:
+            for index in reversed(selected_indices):
+                del self.file_paths[index]
+                self.file_listbox.delete(index)
+            if self.current_index >= len(self.file_paths):
+                self.current_index = len(self.file_paths) - 1
+        self.update_buttons()
+
+    def update_buttons(self):
+        if len(self.file_paths) == len(self.csv_paths):
+            self.start_roi_button.config(state=tk.NORMAL)
+        else:
+            self.start_roi_button.config(state=tk.DISABLED)
+
+    def open_roi_window(self):
+        self.window.withdraw()
+        roi_window = tk.Toplevel(self.window)
+        roi_window = ArenaROI_Window(
+            roi_window, 
+            file_paths=self.file_paths, 
+            csv_paths=self.csv_paths,
+            current_index=self.current_index, 
+            roi_coordinates=self.roi_coordinates, 
+            root_window=self.window
+            )
+        roi_window.show()
+
+class ArenaROI_Window:
+    def __init__(self, top_window, file_paths, csv_paths, current_index, roi_coordinates, root_window):
+        self.file_paths = file_paths
+        self.csv_paths = csv_paths
+        self.current_index = current_index
+        self.roi_coordinates = roi_coordinates
+        self.window = top_window
+        self.root_window = root_window
+        self.oval_id = None
+        self.drag_data = {"x": 0, "y": 0, "item": None}
+        self.create_widgets()
+
+    def create_widgets(self):
+        self.frame=tk.Frame(self.window)
+        self.frame.pack(side="left", anchor="center", pady=2)
+        
+        self.label_radius = tk.Label(self.frame, text="Arena Radius (mm):")
+        self.label_radius.pack(side=tk.TOP, anchor="center",pady=5)
+        self.entry_radius = tk.Entry(self.frame, validate="key", validatecommand=(self.window.register(self.validate_radius), '%P'))
+        self.entry_radius.pack(side=tk.TOP, anchor="center", pady=5)
+        self.entry_radius.bind("<KeyRelease>", self.update_button)
+
+        self.start_selection_button = ttk.Button(self.frame, text="Dibujar ROI", command=self.start_roi_selection)
+        self.start_selection_button.pack(side=tk.BOTTOM, anchor='center', pady=5)
+
+        self.next_button = ttk.Button(self.frame, text="Siguiente", state=tk.DISABLED, command=self.next_video)
+        self.next_button.pack(side=tk.BOTTOM, anchor='center', pady=5)
+
+        self.canvas_frame = tk.Frame(self.window)
+        self.canvas_frame.pack(side='top', fill='both', expand=True)
+
+        self.canvas = tk.Canvas(self.canvas_frame, scrollregion=(0, 0, 1000, 1000))  # Placeholder size
+        self.canvas.pack(side='left', fill='both', expand=True)
+
+        self.v_scrollbar = ttk.Scrollbar(self.canvas_frame, orient='vertical', command=self.canvas.yview)
+        self.v_scrollbar.pack(side='right', fill='y')
+        self.canvas.config(yscrollcommand=self.v_scrollbar.set)
+
+        self.h_scrollbar = ttk.Scrollbar(self.window, orient='horizontal', command=self.canvas.xview)
+        self.h_scrollbar.pack(side='bottom', fill='x')
+        self.canvas.config(xscrollcommand=self.h_scrollbar.set)
+
+    def show(self):
+        self.load_video()
+        self.window.deiconify()
+
+    def validate_radius(self, value):
+        try:
+            return float(value) >= 0
+        except ValueError:
+            return False
+        
+    def update_button(self, value):
+        if self.entry_radius.get() != "" and self.oval_id:
+            self.next_button.config(state=tk.NORMAL)
+        else:
+            self.next_button.config(state=tk.DISABLED)
+
+    def load_video(self):
+        path = self.file_paths[self.current_index]
+        cap = cv2.VideoCapture(path)
+        if not cap.isOpened():
+            print(f"No se puede abrir el archivo {path}")
+            return
+        
+        ret, frame = cap.read()
+        if ret:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            self.photo = ImageTk.PhotoImage(image=Image.fromarray(frame))
+            self.canvas.config(width=self.photo.width(), height=self.photo.height())
+            self.canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)
+        else:
+            print(f"No se pudo leer el frame del archivo {path}")
+
+    def start_roi_selection(self):
+        self.canvas.bind("<ButtonPress-1>", self.on_start_selection)
+        self.canvas.bind("<B1-Motion>", self.on_move_selection)
+        self.canvas.bind("<ButtonRelease-1>", self.on_end_selection)
+        self.start_selection_button.config(state=tk.DISABLED)
+
+    def on_start_selection(self, event):
+        if self.oval_id:
+            self.canvas.delete(self.oval_id)
+        self.start_x = event.x
+        self.start_y = event.y
+        self.oval_id = self.canvas.create_oval(self.start_x, self.start_y, self.start_x, self.start_y, outline='red', width=1)
+
+    def on_move_selection(self, event):
+        self.canvas.coords(self.oval_id, self.start_x, self.start_y, event.x, event.y)
+
+    def on_end_selection(self, event):
+        self.end_x = event.x
+        self.end_y = event.y
+        self.canvas.unbind("<ButtonPress-1>")
+        self.canvas.unbind("<B1-Motion>")
+        self.canvas.unbind("<ButtonRelease-1>")
+        self.next_button.config(state=tk.NORMAL)
+        
+        # Hacer el óvalo editable
+        self.canvas.tag_bind(self.oval_id, "<ButtonPress-1>", self.on_oval_press)
+        self.canvas.tag_bind(self.oval_id, "<B1-Motion>", self.on_oval_move)
+
+        # Agregar puntos de anclaje en los bordes del óvalo
+        self.create_resize_handles()
+
+    def on_oval_press(self, event):
+        self.oval_start_x = event.x
+        self.oval_start_y = event.y
+        self.oval_bbox = self.canvas.coords(self.oval_id)
+
+    def on_oval_move(self, event):
+        dx = event.x - self.oval_start_x
+        dy = event.y - self.oval_start_y
+        new_bbox = [self.oval_bbox[0] + dx, self.oval_bbox[1] + dy, self.oval_bbox[2] + dx, self.oval_bbox[3] + dy]
+        self.canvas.coords(self.oval_id, *new_bbox)
+        self.update_resize_handles()
+
+    def create_resize_handles(self):
+        x0, y0, x1, y1 = self.canvas.coords(self.oval_id)
+        self.handles = [
+            self.canvas.create_rectangle(x0-5, y0-5, x0+5, y0+5, outline="darkblue", fill="darkblue"),
+            self.canvas.create_rectangle(x1-5, y0-5, x1+5, y0+5, outline="darkblue", fill="darkblue"),
+            self.canvas.create_rectangle(x0-5, y1-5, x0+5, y1+5, outline="darkblue", fill="darkblue"),
+            self.canvas.create_rectangle(x1-5, y1-5, x1+5, y1+5, outline="darkblue", fill="darkblue")
+        ]
+
+        for handle in self.handles:
+            self.canvas.tag_bind(handle, "<ButtonPress-1>", self.on_handle_press)
+            self.canvas.tag_bind(handle, "<B1-Motion>", self.on_handle_move)
+
+    def update_resize_handles(self):
+        x0, y0, x1, y1 = self.canvas.coords(self.oval_id)
+        handle_coords = [
+            (x0-5, y0-5, x0+5, y0+5),
+            (x1-5, y0-5, x1+5, y0+5),
+            (x0-5, y1-5, x0+5, y1+5),
+            (x1-5, y1-5, x1+5, y1+5)
+        ]
+
+        for handle, coords in zip(self.handles, handle_coords):
+            self.canvas.coords(handle, *coords)
+
+    def on_handle_press(self, event):
+        self.handle_start_x = event.x
+        self.handle_start_y = event.y
+        self.oval_bbox = self.canvas.coords(self.oval_id)
+        self.active_handle = event.widget.find_closest(event.x, event.y)[0]
+
+    def on_handle_move(self, event):
+        dx = event.x - self.handle_start_x
+        dy = event.y - self.handle_start_y
+
+        x0, y0, x1, y1 = self.oval_bbox
+        if self.active_handle == self.handles[0]:  # Top-left
+            new_coords = [x0 + dx, y0 + dy, x1, y1]
+        elif self.active_handle == self.handles[1]:  # Top-right
+            new_coords = [x0, y0 + dy, x1 + dx, y1]
+        elif self.active_handle == self.handles[2]:  # Bottom-left
+            new_coords = [x0 + dx, y0, x1, y1 + dy]
+        elif self.active_handle == self.handles[3]:  # Bottom-right
+            new_coords = [x0, y0, x1 + dx, y1 + dy]
+
+        self.canvas.coords(self.oval_id, *new_coords)
+        self.update_resize_handles()
+
+    def next_video(self):
+        self.roi_coordinates[self.current_index] = [
+            self.file_paths[self.current_index], 
+            self.csv_paths[self.current_index], 
+            self.canvas.coords(self.oval_id),
+            float(self.entry_radius.get())
+            ]
+
+        self.current_index += 1
+        if self.current_index < len(self.file_paths):
+            self.load_video()
+            self.start_selection_button.config(state=tk.NORMAL)
+            self.next_button.config(state=tk.DISABLED)
+        else:
+            self.window.destroy()
+            self.update_csv_with_roi()
+            self.root_window.deiconify()
+
+    def update_csv_with_roi(self):
+        length = len(self.file_paths)
+        br.add_arenaroi_to_csvdata(length=length, roi_coordinates_dict=self.roi_coordinates)       
 
 #------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
