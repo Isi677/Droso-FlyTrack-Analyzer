@@ -355,13 +355,20 @@ class Analysis_Window(BaseWindow):
         video_duration = int(self.video_duration_entry.get().strip())
         distance_filter = float(self.distance_filter_entry.get().strip())
         activity_threshold = float(self.activity_threshold_entry.get().strip())
-        rings_number = int(self.rings_entry.get().strip())
-        scaling_factor = float(self.scaling_factor_entry.get().strip())
         preference_analysis = self.dropdown_preference.get()
+
+        object_analysis = bool(self.var_object_recognition.get())
+        if self.validate_float_number(self.scaling_factor_entry.get()) and object_analysis:
+            scaling_factor = float(self.scaling_factor_entry.get().strip())
+        else:
+            scaling_factor = None
 
         raw_data = bool(self.var_raw_data.get())
         centrophobism_analysis = bool(self.var_centrophobism.get())
-        object_analysis = bool(self.var_object_recognition.get())
+        if centrophobism_analysis:
+            rings_number = int(self.rings_entry.get().strip())
+        else:
+            rings_number = None
 
         analyze_window = tk.Toplevel(self.window)
         analyze_window.title("Analyzing Files...")
