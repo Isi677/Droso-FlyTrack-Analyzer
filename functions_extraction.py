@@ -5,11 +5,11 @@ def rellenar_vacios(filas, n_moscas):
     posicion_mosca = -1
     data_anterior = filas[0].strip().split(",")
 
-    for i in range (1, n_moscas+1):
+    for j in range (1, n_moscas+1):
         posicion_mosca += 2
         filas_nuevas = []
 
-        for i in range (1, len(filas)):
+        for i in range (0, len(filas)):
             data_actual = filas[i].strip().split(",")
 
             if data_actual[0] != "":
@@ -44,9 +44,8 @@ def saltarse_vacios(filas, n_moscas):
     for i in range (1, n_moscas+1):
         posicion_mosca += 2
         filas_nuevas = []
-        j = 0
 
-        while j != len(filas):
+        for j in range (0, len(filas)):
             data_actual = filas[j].strip().split(",")
 
             if data_actual[posicion_mosca] != "":
@@ -56,7 +55,6 @@ def saltarse_vacios(filas, n_moscas):
                 posiciony = data_actual[posicion_mosca+1]
                 fila_nueva = [frame, posicionx, posiciony]
                 filas_nuevas.append(fila_nueva)
-            j += 1
         total_filas.append(filas_nuevas)
 
     return total_filas
@@ -69,18 +67,18 @@ def vacios_iguales(filas, n_moscas):
     for i in range (1, n_moscas+1):
         posicion_mosca += 2
         filas_nuevas = []
-        for j in range (1, len(filas)):
-            data_actual = filas[j].strip().split(",")
 
-            if data_actual == "":
+        for j in range (0, len(filas)):
+            data_actual = filas[j].strip().split(",")
+            
+            #Si el frame no existe
+            if data_actual[0] == "":
                 frame = int(data_anterior[0])+1
                 posicionx = 0
                 posiciony = 0
+            #Si el frame existe
             else:
-                if data_actual[0] != "":
-                    frame = int(data_actual[0])
-                else: 
-                    frame = int(data_anterior[0])+1
+                frame = int(data_actual[0])
                 if data_actual[posicion_mosca] != "":
                     #Si existen los datos y el frame
                     posicionx = float(data_actual[posicion_mosca])
@@ -102,7 +100,7 @@ def rellenar_vacios_bonsai(filas):
     total_filas = []
     data_anterior = filas[0].strip().split(",")
 
-    for i in range (1, len(filas)):
+    for i in range (0, len(filas)):
         data_actual = filas[i].strip().split(",")
         frame = i
 

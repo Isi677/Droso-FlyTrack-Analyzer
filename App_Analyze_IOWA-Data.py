@@ -412,7 +412,7 @@ class Analysis_Window(BaseWindow):
                     centrophobism_analysis=centrophobism_analysis, n_rings=rings_number, 
                     total_frame_number=number_frames, record_time=video_duration, 
                     stop_event=self.abort_event, progress=progress, text_var=text_var, raw_data_save=raw_data,
-                    object_analysis=object_analysis
+                    object_analysis=object_analysis, scaling_factor=scaling_factor
                 )
             """
 
